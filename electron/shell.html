@@ -1,0 +1,1934 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Q-bot PLUS</title>
+  <style>
+    :root {
+      --bg-1: #05070d;
+      --bg-2: #0a0f1c;
+      --glass: rgba(255, 255, 255, 0.035);
+      --glass-strong: rgba(255, 255, 255, 0.06);
+      --line: rgba(255, 255, 255, 0.07);
+      --line-strong: rgba(255, 255, 255, 0.14);
+      --text: #eef2ff;
+      --muted: #8b93a7;
+      --dim: #5d657a;
+      --violet: #8b5cf6;
+      --blue: #3b82f6;
+      --cyan: #22d3ee;
+      --green: #34d399;
+      --red: #fb7185;
+      --amber: #fbbf24;
+      --grad: linear-gradient(135deg, #6366f1 0%, #3b82f6 45%, #22d3ee 100%);
+      --radius: 16px;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      height: 100%;
+      color: var(--text);
+      font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+      font-size: 13px;
+      background: transparent;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .topbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 30;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 150px 0 10px;
+      background: #0a0f1c;
+      border-bottom: 1px solid var(--line);
+      -webkit-app-region: drag;
+      user-select: none;
+    }
+    .topbar button, .topbar input, .topbar form, .menu { -webkit-app-region: no-drag; }
+    .tb-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-right: 8px;
+      margin-right: 2px;
+      font-size: 12.5px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      border-right: 1px solid var(--line);
+    }
+    .tb-logo {
+      width: 24px;
+      height: 24px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: var(--grad);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    }
+    .tb-logo svg { width: 14px; height: 14px; fill: none; stroke: white; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .tb-btn {
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      border-radius: 9px;
+      color: #aab3c7;
+      background: transparent;
+    }
+    .tb-btn svg { width: 17px; height: 17px; }
+    .tb-btn:hover { transform: none; color: var(--text); background: rgba(255, 255, 255, 0.07); }
+    .tb-btn:active { transform: scale(0.92); }
+    .tb-btn:disabled { opacity: 0.3; pointer-events: none; }
+    #tb-back:hover svg { transform: translateX(-2px); }
+    #tb-forward:hover svg { transform: translateX(2px); }
+    #tb-reload:hover svg { transform: rotate(120deg); }
+    #tb-reload.loading svg { animation: spin 0.9s linear infinite; }
+    .omnibox {
+      position: relative;
+      flex: 1;
+      max-width: 860px;
+      margin: 0 auto 0 6px;
+      display: flex;
+      align-items: center;
+      height: 32px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid transparent;
+      transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .omnibox:hover { background: rgba(255, 255, 255, 0.075); }
+    .omnibox:focus-within {
+      background: #0d1322;
+      border-color: rgba(99, 102, 241, 0.7);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+    }
+    .omnibox .secure {
+      display: grid;
+      place-items: center;
+      width: 26px;
+      height: 26px;
+      margin-left: 3px;
+      border-radius: 50%;
+      color: var(--green);
+    }
+    .omnibox .secure.insecure { color: var(--amber); }
+    .omnibox .secure svg { width: 14px; height: 14px; }
+    .topbar .omnibox input#url {
+      flex: 1;
+      height: 100%;
+      min-width: 0;
+      padding: 0 12px 0 4px;
+      border: 0;
+      background: transparent;
+      color: #dfe5f3;
+      font-size: 13px;
+      box-shadow: none;
+    }
+    .topbar .omnibox input#url:focus { background: transparent; box-shadow: none; }
+    .omnibox .go-inline {
+      width: 26px;
+      height: 26px;
+      margin-right: 3px;
+      padding: 0;
+      border-radius: 50%;
+      color: var(--muted);
+      background: transparent;
+      opacity: 0;
+      transition: opacity 0.2s ease, background 0.2s ease;
+    }
+    .omnibox:focus-within .go-inline { opacity: 1; }
+    .omnibox .go-inline:hover { transform: none; color: white; background: var(--grad); }
+    .omnibox .go-inline svg { width: 14px; height: 14px; }
+    .progress {
+      position: absolute;
+      left: 0;
+      bottom: -1px;
+      width: 0;
+      height: 2px;
+      opacity: 0;
+      background: linear-gradient(90deg, #6366f1, #3b82f6, #22d3ee);
+      box-shadow: 0 0 10px rgba(34, 211, 238, 0.8), 0 0 4px rgba(99, 102, 241, 0.9);
+      border-radius: 0 2px 2px 0;
+      pointer-events: none;
+    }
+    .progress::after {
+      content: "";
+      position: absolute;
+      right: 0;
+      top: -2px;
+      width: 90px;
+      height: 6px;
+      border-radius: 50%;
+      background: radial-gradient(closest-side, rgba(165, 243, 252, 0.9), transparent);
+    }
+    .progress.on {
+      width: 85%;
+      opacity: 1;
+      transition: width 7s cubic-bezier(0.1, 0.7, 0.2, 1), opacity 0.1s;
+    }
+    .progress.done {
+      width: 100%;
+      opacity: 0;
+      transition: width 0.25s ease, opacity 0.4s ease 0.25s;
+    }
+
+    .splash {
+      position: fixed;
+      top: 44px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 25;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      background: radial-gradient(900px 500px at 50% 45%, #111a33 0%, #070a14 60%, #04060c 100%);
+      transition: opacity 0.6s ease, visibility 0.6s;
+    }
+    .splash.hide { opacity: 0; visibility: hidden; }
+    .splash-grid {
+      position: absolute;
+      left: -50%;
+      right: -50%;
+      bottom: -10%;
+      height: 60%;
+      background-image:
+        linear-gradient(rgba(99, 102, 241, 0.22) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(99, 102, 241, 0.22) 1px, transparent 1px);
+      background-size: 60px 60px;
+      transform: perspective(500px) rotateX(62deg);
+      transform-origin: top center;
+      mask-image: linear-gradient(180deg, transparent, #000 40%, #000 70%, transparent);
+      animation: grid-move 3s linear infinite;
+    }
+    .splash-glow {
+      position: absolute;
+      width: 620px;
+      height: 620px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(59, 130, 246, 0.22), transparent 65%);
+      animation: breathe 4s ease-in-out infinite;
+    }
+    .splash-center {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: transform 0.6s cubic-bezier(0.6, 0, 0.4, 1), opacity 0.5s ease;
+    }
+    .splash.leaving .splash-center { transform: scale(1.12); opacity: 0; }
+    .orb {
+      position: relative;
+      width: 150px;
+      height: 150px;
+      display: grid;
+      place-items: center;
+    }
+    .orb .ring {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: conic-gradient(from 0deg, transparent 0 55%, #6366f1 70%, #22d3ee 88%, transparent 100%);
+      -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+      mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+      animation: spin 1.4s linear infinite;
+      filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.7));
+    }
+    .orb .ring.r2 {
+      inset: 14px;
+      background: conic-gradient(from 180deg, transparent 0 60%, #a78bfa 80%, transparent 100%);
+      animation-duration: 2.2s;
+      animation-direction: reverse;
+      opacity: 0.8;
+    }
+    .orb .wave {
+      position: absolute;
+      inset: 30px;
+      border-radius: 28px;
+      border: 1px solid rgba(34, 211, 238, 0.5);
+      animation: wave 2.4s ease-out infinite;
+    }
+    .orb .wave:nth-child(4) { animation-delay: 0.8s; }
+    .orb .wave:nth-child(5) { animation-delay: 1.6s; }
+    .orb .dot {
+      position: absolute;
+      inset: -6px;
+      animation: spin 3.2s linear infinite;
+    }
+    .orb .dot::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 50%;
+      width: 8px;
+      height: 8px;
+      margin-left: -4px;
+      border-radius: 50%;
+      background: #a5f3fc;
+      box-shadow: 0 0 12px #22d3ee, 0 0 24px #3b82f6;
+    }
+    .orb-logo {
+      position: relative;
+      width: 76px;
+      height: 76px;
+      border-radius: 24px;
+      display: grid;
+      place-items: center;
+      background: var(--grad);
+      box-shadow: 0 16px 50px rgba(59, 130, 246, 0.55), inset 0 1px 0 rgba(255,255,255,0.4);
+      animation: logo-pop 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) both, float 3s ease-in-out 0.9s infinite;
+    }
+    .orb-logo svg { width: 38px; height: 38px; fill: none; stroke: white; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    .orb-logo .eye { transform-box: fill-box; transform-origin: center; animation: blink-eye 4s ease-in-out infinite; }
+    .candles {
+      display: flex;
+      align-items: flex-end;
+      gap: 5px;
+      height: 34px;
+      margin-top: 22px;
+    }
+    .candles i {
+      position: relative;
+      width: 6px;
+      border-radius: 2px;
+      background: var(--green);
+      box-shadow: 0 0 8px rgba(52, 211, 153, 0.5);
+      transform-origin: bottom;
+      animation: candle 1.6s ease-in-out infinite;
+    }
+    .candles i::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: -5px;
+      bottom: -5px;
+      width: 1px;
+      background: inherit;
+      opacity: 0.6;
+    }
+    .candles i.down { background: var(--red); box-shadow: 0 0 8px rgba(251, 113, 133, 0.5); }
+    .candles i:nth-child(1) { height: 12px; animation-delay: 0s; }
+    .candles i:nth-child(2) { height: 20px; animation-delay: 0.12s; }
+    .candles i:nth-child(3) { height: 14px; animation-delay: 0.24s; }
+    .candles i:nth-child(4) { height: 26px; animation-delay: 0.36s; }
+    .candles i:nth-child(5) { height: 18px; animation-delay: 0.48s; }
+    .candles i:nth-child(6) { height: 30px; animation-delay: 0.6s; }
+    .candles i:nth-child(7) { height: 22px; animation-delay: 0.72s; }
+    .candles i:nth-child(8) { height: 34px; animation-delay: 0.84s; }
+    .splash-title {
+      margin: 18px 0 4px;
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(90deg, #e0e7ff 0%, #ffffff 40%, #67e8f9 50%, #ffffff 60%, #e0e7ff 100%);
+      background-size: 250% 100%;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      animation: shimmer 2.8s linear infinite;
+    }
+    .splash-status {
+      height: 18px;
+      color: var(--muted);
+      font-size: 13px;
+      animation: fade-in 0.4s ease;
+    }
+    .splash-bar {
+      position: relative;
+      width: 280px;
+      height: 4px;
+      margin-top: 18px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.07);
+      overflow: visible;
+    }
+    .splash-bar i {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 0;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #6366f1, #3b82f6, #22d3ee);
+      box-shadow: 0 0 14px rgba(34, 211, 238, 0.6);
+    }
+    .splash-bar i::after {
+      content: "";
+      position: absolute;
+      right: -4px;
+      top: 50%;
+      width: 10px;
+      height: 10px;
+      margin-top: -5px;
+      border-radius: 50%;
+      background: #e0f2fe;
+      box-shadow: 0 0 12px #22d3ee, 0 0 24px #3b82f6;
+    }
+    .splash-meta {
+      display: flex;
+      justify-content: space-between;
+      width: 280px;
+      margin-top: 8px;
+      color: var(--dim);
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+    }
+    .steps { display: flex; gap: 18px; margin-top: 18px; }
+    .step {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--dim);
+      font-size: 12px;
+      transition: color 0.3s ease;
+    }
+    .step i {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      border: 1.5px solid currentColor;
+      transition: all 0.3s ease;
+    }
+    .step i svg { width: 10px; height: 10px; opacity: 0; stroke-width: 3; transition: opacity 0.2s ease; }
+    .step.active { color: #c7d2fe; }
+    .step.active i { border-color: #818cf8; border-top-color: transparent; animation: spin 0.8s linear infinite; }
+    .step.done { color: var(--green); }
+    .step.done i { background: var(--green); border-color: var(--green); color: #052e1c; animation: none; }
+    .step.done i svg { opacity: 1; }
+    .splash-error {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-top: 18px;
+      color: #fecdd3;
+      font-size: 13px;
+      text-align: center;
+    }
+    .splash.error .splash-error { display: flex; }
+    .splash.error .steps, .splash.error .splash-bar, .splash.error .splash-meta { display: none; }
+    .splash.error .orb .ring { background: conic-gradient(from 0deg, transparent 0 55%, #fb7185 80%, transparent 100%); }
+    .splash-error small { color: var(--dim); }
+    .splash-error button { color: white; background: var(--grad); padding: 0 22px; }
+
+    .menu {
+      position: fixed;
+      top: 48px;
+      right: 10px;
+      z-index: 40;
+      width: 290px;
+      padding: 6px;
+      border-radius: 14px;
+      background: rgba(13, 19, 34, 0.97);
+      border: 1px solid var(--line-strong);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(20px);
+      transform-origin: top right;
+      transform: scale(0.95) translateY(-4px);
+      opacity: 0;
+      visibility: hidden;
+      transition: transform 0.18s ease, opacity 0.18s ease, visibility 0.18s;
+    }
+    .menu.open { transform: none; opacity: 1; visibility: visible; }
+    .menu-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      height: 34px;
+      padding: 0 10px;
+      border-radius: 9px;
+      color: #d4dbea;
+      background: transparent;
+      font-size: 12.5px;
+      font-weight: 500;
+      justify-content: flex-start;
+    }
+    .menu-item:hover { transform: none; background: rgba(255, 255, 255, 0.07); color: white; }
+    .menu-item svg { width: 16px; height: 16px; color: var(--muted); }
+    .menu-item span { white-space: nowrap; text-align: left; }
+    .menu-item .kbd { margin-left: auto; color: var(--dim); font-size: 11px; }
+    .menu-sep { height: 1px; margin: 5px 4px; background: var(--line); }
+    .update-box {
+      margin: 2px 6px 8px;
+      padding: 10px;
+      border-radius: 10px;
+      background: rgba(99, 102, 241, 0.1);
+      border: 1px solid rgba(99, 102, 241, 0.28);
+    }
+    .update-box[hidden] { display: none; }
+    .update-box p { margin: 0; font-size: 12px; line-height: 1.45; color: #d4dbea; white-space: normal; }
+    .update-track { height: 4px; margin-top: 8px; border-radius: 4px; background: rgba(255,255,255,0.08); overflow: hidden; }
+    .update-track[hidden] { display: none; }
+    .update-track i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #6366f1, #22d3ee); transition: width 0.3s ease; }
+    .update-install { width: 100%; height: 32px; margin-top: 8px; color: white; background: var(--grad); }
+    .update-install[hidden] { display: none; }
+    .menu-label { padding: 6px 10px 4px; color: var(--dim); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; }
+    .zoom-row { display: flex; align-items: center; gap: 4px; padding: 2px 4px 2px 10px; height: 38px; }
+    .zoom-row > span { flex: 1; font-size: 12.5px; color: #d4dbea; }
+    .zoom-row button { width: 30px; height: 28px; padding: 0; border-radius: 8px; color: #d4dbea; background: rgba(255,255,255,0.06); }
+    .zoom-row button:hover { transform: none; background: rgba(255,255,255,0.12); }
+    .zoom-row b { min-width: 44px; text-align: center; font-size: 12px; font-variant-numeric: tabular-nums; }
+
+    .sidebar {
+      position: fixed;
+      top: 44px;
+      right: 0;
+      width: 400px;
+      height: calc(100% - 44px);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: linear-gradient(180deg, var(--bg-2), var(--bg-1));
+      border-left: 1px solid var(--line);
+      isolation: isolate;
+    }
+    .aurora {
+      position: absolute;
+      inset: -20% -30% auto;
+      height: 380px;
+      z-index: -1;
+      filter: blur(60px);
+      opacity: 0.55;
+      pointer-events: none;
+    }
+    .aurora i {
+      position: absolute;
+      border-radius: 50%;
+      animation: drift 14s ease-in-out infinite alternate;
+    }
+    .aurora i:nth-child(1) { width: 260px; height: 220px; left: 10%; top: 10%; background: #4f46e5; }
+    .aurora i:nth-child(2) { width: 240px; height: 200px; right: 5%; top: 0; background: #0891b2; animation-delay: -5s; }
+    .aurora i:nth-child(3) { width: 180px; height: 160px; left: 45%; top: 45%; background: #7c3aed; animation-delay: -9s; }
+    .grain {
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      background-image: radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px);
+      background-size: 3px 3px;
+      mask-image: linear-gradient(180deg, #000 0%, transparent 60%);
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 18px 18px 14px;
+    }
+    .mark {
+      position: relative;
+      width: 42px;
+      height: 42px;
+      border-radius: 13px;
+      display: grid;
+      place-items: center;
+      background: var(--grad);
+      box-shadow: 0 8px 24px rgba(59, 130, 246, 0.45), inset 0 1px 0 rgba(255,255,255,0.35);
+    }
+    .mark::after {
+      content: "";
+      position: absolute;
+      inset: -3px;
+      border-radius: 16px;
+      border: 1px solid rgba(34, 211, 238, 0.35);
+      animation: ring 3s ease-out infinite;
+    }
+    .mark svg {
+      width: 22px;
+      height: 22px;
+      fill: none;
+      stroke: white;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      animation: float 2.6s ease-in-out infinite;
+    }
+    .brand-text { flex: 1; min-width: 0; }
+    h1 {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+    h1 b {
+      background: var(--grad);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 3px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      color: var(--muted);
+      background: var(--glass-strong);
+      border: 1px solid var(--line);
+    }
+    .badge.vip {
+      color: #1c1400;
+      background: linear-gradient(135deg, #fde68a, #f59e0b);
+      border-color: transparent;
+    }
+
+    .scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 14px 14px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.12) transparent;
+    }
+    .scroll::-webkit-scrollbar { width: 6px; }
+    .scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 6px; }
+
+    .card {
+      position: relative;
+      margin-top: 12px;
+      padding: 14px;
+      border-radius: var(--radius);
+      background: var(--glass);
+      border: 1px solid var(--line);
+      backdrop-filter: blur(14px);
+    }
+    .card-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 12px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .card-title svg { width: 14px; height: 14px; color: var(--cyan); }
+
+    .hero {
+      margin-top: 0;
+      overflow: hidden;
+      background:
+        linear-gradient(160deg, rgba(99, 102, 241, 0.16), rgba(34, 211, 238, 0.05) 60%),
+        var(--glass);
+      border-color: rgba(129, 140, 248, 0.22);
+    }
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      padding: 1px;
+      background: linear-gradient(135deg, rgba(129,140,248,0.6), transparent 40%, transparent 60%, rgba(34,211,238,0.5));
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+    }
+    .hero-top { display: flex; justify-content: space-between; align-items: center; }
+    .hero-label { color: var(--muted); font-size: 12px; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--line);
+    }
+    .pill::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--dim);
+    }
+    .pill.on {
+      color: var(--green);
+      background: rgba(52, 211, 153, 0.1);
+      border-color: rgba(52, 211, 153, 0.3);
+    }
+    .pill.on::before {
+      background: var(--green);
+      box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.6);
+      animation: pulse 1.6s ease-out infinite;
+    }
+    .profit {
+      margin: 12px 0 2px;
+      font-size: 38px;
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      font-variant-numeric: tabular-nums;
+      transition: color 0.3s ease;
+    }
+    .profit.up { color: var(--green); text-shadow: 0 0 24px rgba(52, 211, 153, 0.35); }
+    .profit.down { color: var(--red); text-shadow: 0 0 24px rgba(251, 113, 133, 0.3); }
+    .spark { display: block; width: 100%; height: 34px; margin: 4px 0 8px; }
+    .spark path { fill: none; stroke: url(#sparkGrad); stroke-width: 2; stroke-linecap: round; }
+    .spark .area { fill: url(#sparkFill); stroke: none; }
+    .log {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid var(--line);
+      color: #c7cde0;
+      font-size: 12px;
+      line-height: 1.45;
+      min-height: 40px;
+    }
+    .log svg { width: 14px; height: 14px; margin-top: 1px; flex: 0 0 auto; color: var(--cyan); }
+
+    label.field-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 12px 0 6px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .card label.field-label:first-of-type { margin-top: 0; }
+    .value {
+      color: var(--text);
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+    .vip-tag {
+      display: none;
+      margin-left: 6px;
+      padding: 1px 6px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--amber);
+      background: rgba(251, 191, 36, 0.12);
+    }
+    .locked .vip-tag { display: inline-block; }
+
+    .input-wrap { position: relative; }
+    .input-wrap .suffix {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--dim);
+      font-size: 12px;
+      pointer-events: none;
+    }
+    input[type="number"], input[type="text"], input:not([type]) {
+      width: 100%;
+      height: 40px;
+      padding: 0 12px;
+      border-radius: 11px;
+      border: 1px solid var(--line);
+      background: rgba(0, 0, 0, 0.3);
+      color: var(--text);
+      font: inherit;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+    input:focus {
+      border-color: rgba(99, 102, 241, 0.7);
+      background: rgba(0, 0, 0, 0.45);
+      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+    }
+    input[type="number"] { appearance: textfield; padding-right: 30px; }
+    input::-webkit-inner-spin-button, input::-webkit-outer-spin-button { appearance: none; margin: 0; }
+    .range-group { margin-top: 14px; }
+    .range-group label.field-label { margin-top: 0; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .grid label.field-label { margin-top: 12px; }
+
+    .url-row { display: flex; gap: 8px; }
+    .url-row .input-wrap { flex: 1; }
+    .url-row input { padding-left: 34px; font-size: 12.5px; }
+    .url-row .prefix {
+      position: absolute;
+      left: 11px;
+      top: 50%;
+      width: 15px;
+      height: 15px;
+      transform: translateY(-50%);
+      color: var(--dim);
+    }
+
+    .segmented {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      padding: 4px;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--line);
+    }
+    .segmented .thumb {
+      position: absolute;
+      top: 4px;
+      bottom: 4px;
+      left: 4px;
+      width: calc((100% - 8px) / 3);
+      border-radius: 9px;
+      background: var(--grad);
+      box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
+      transition: transform 0.35s cubic-bezier(0.34, 1.4, 0.64, 1);
+    }
+    .segmented button {
+      position: relative;
+      z-index: 1;
+      height: 32px;
+      padding: 0;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      box-shadow: none;
+    }
+    .segmented button:hover { transform: none; color: var(--text); }
+    .segmented button.active { color: white; }
+    select.hidden { display: none; }
+
+    input[type="range"] {
+      --p: 50%;
+      width: 100%;
+      height: 22px;
+      margin: 0;
+      background: transparent;
+      appearance: none;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 6px;
+      border-radius: 6px;
+      background:
+        linear-gradient(90deg, #6366f1, #22d3ee) 0 / var(--p) 100% no-repeat,
+        rgba(255, 255, 255, 0.08);
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      margin-top: -6px;
+      border-radius: 50%;
+      background: white;
+      border: 4px solid #3b82f6;
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.18), 0 2px 8px rgba(0,0,0,0.4);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    input[type="range"]:hover::-webkit-slider-thumb { transform: scale(1.12); }
+    input[type="range"]:active::-webkit-slider-thumb { box-shadow: 0 0 0 7px rgba(59, 130, 246, 0.22); }
+
+    .toggles { display: grid; gap: 8px; margin-top: 14px; }
+    .check {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--line);
+      cursor: pointer;
+      transition: border-color 0.2s ease, background 0.2s ease;
+    }
+    .check:hover { border-color: var(--line-strong); background: rgba(255,255,255,0.03); }
+    .check .meta { display: flex; flex-direction: column; gap: 2px; }
+    .check .meta b { font-weight: 600; font-size: 13px; }
+    .check .meta small { color: var(--dim); font-size: 11px; }
+    .check input {
+      appearance: none;
+      position: relative;
+      flex: 0 0 auto;
+      width: 38px;
+      height: 22px;
+      margin: 0;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.1);
+      cursor: pointer;
+      transition: background 0.25s ease;
+    }
+    .check input::after {
+      content: "";
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: white;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+      transition: transform 0.3s cubic-bezier(0.34, 1.4, 0.64, 1);
+    }
+    .check input:checked { background: var(--grad); }
+    .check input:checked::after { transform: translateX(16px); }
+
+    .locked { opacity: 0.45; }
+    .locked, .locked * { cursor: not-allowed !important; }
+
+    footer {
+      padding: 12px 14px 14px;
+      background: linear-gradient(180deg, rgba(5,7,13,0), rgba(5,7,13,0.9) 30%);
+      border-top: 1px solid var(--line);
+      backdrop-filter: blur(12px);
+    }
+    button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      height: 40px;
+      padding: 0 14px;
+      border: 0;
+      border-radius: 12px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.18s ease, box-shadow 0.25s ease, background 0.25s ease, color 0.2s ease;
+    }
+    button svg {
+      width: 16px;
+      height: 16px;
+      flex: 0 0 auto;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.9;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      transition: transform 0.25s ease;
+    }
+    svg.icon {
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.9;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    button:hover { transform: translateY(-1px); }
+    button:active { transform: translateY(0) scale(0.97); }
+
+    .go {
+      width: 40px;
+      padding: 0;
+      color: var(--text);
+      background: var(--glass-strong);
+      border: 1px solid var(--line);
+    }
+    .go:hover { border-color: rgba(99, 102, 241, 0.6); background: rgba(99, 102, 241, 0.15); }
+    .go:hover svg { animation: slide-out 0.45s ease; }
+
+    .start {
+      position: relative;
+      width: 100%;
+      height: 48px;
+      overflow: hidden;
+      color: white;
+      font-size: 14px;
+      background: var(--grad);
+      background-size: 160% 160%;
+      box-shadow: 0 10px 30px rgba(59, 130, 246, 0.35), inset 0 1px 0 rgba(255,255,255,0.25);
+      animation: shift 6s ease infinite;
+    }
+    .start::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -60%;
+      width: 40%;
+      height: 100%;
+      background: linear-gradient(100deg, transparent, rgba(255,255,255,0.35), transparent);
+      transform: skewX(-20deg);
+      transition: left 0.7s ease;
+    }
+    .start:hover::after { left: 130%; }
+    .start:hover { box-shadow: 0 14px 38px rgba(59, 130, 246, 0.5), inset 0 1px 0 rgba(255,255,255,0.3); }
+    .start:hover svg { animation: play-pop 0.45s ease; }
+    .start.live {
+      background: linear-gradient(135deg, #059669, #10b981 50%, #34d399);
+      box-shadow: 0 10px 30px rgba(16, 185, 129, 0.35), inset 0 1px 0 rgba(255,255,255,0.25);
+    }
+    .start.live svg { animation: play-pop 1.1s ease infinite; }
+
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+    .ghost {
+      color: var(--text);
+      background: var(--glass-strong);
+      border: 1px solid var(--line);
+    }
+    .ghost:hover { border-color: rgba(139, 92, 246, 0.55); background: rgba(139, 92, 246, 0.14); }
+    .ghost:hover svg { animation: spark 0.6s ease; }
+    .stop {
+      color: #fecdd3;
+      background: rgba(251, 113, 133, 0.1);
+      border: 1px solid rgba(251, 113, 133, 0.22);
+    }
+    .stop:hover { background: rgba(251, 113, 133, 0.2); border-color: rgba(251, 113, 133, 0.45); }
+    .stop:hover svg { animation: shake 0.4s ease; }
+
+    .links { display: flex; gap: 8px; margin-top: 8px; }
+    .links button {
+      flex: 1;
+      height: 34px;
+      font-size: 12px;
+      color: var(--muted);
+      background: transparent;
+      border: 1px dashed var(--line-strong);
+    }
+    .links button:hover { color: var(--text); border-style: solid; }
+    .links button:hover svg { animation: tilt 0.45s ease; }
+    #vip { color: var(--amber); border-color: rgba(251, 191, 36, 0.3); }
+    #vip:hover { background: rgba(251, 191, 36, 0.08); }
+
+    .error:empty { display: none; }
+    .error {
+      margin-top: 8px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      color: #fecdd3;
+      font-size: 12px;
+      background: rgba(251, 113, 133, 0.1);
+      border: 1px solid rgba(251, 113, 133, 0.25);
+      animation: fade-in 0.25s ease;
+    }
+
+    .icon-btn {
+      width: 38px;
+      height: 38px;
+      padding: 0;
+      color: var(--muted);
+      background: var(--glass-strong);
+      border: 1px solid var(--line);
+    }
+    .icon-btn svg { width: 18px; height: 18px; }
+    .icon-btn:hover { color: var(--text); border-color: var(--line-strong); }
+    #settings-btn:hover svg { transform: rotate(90deg); transition: transform 0.5s ease; }
+
+    .settings-panel {
+      position: absolute;
+      inset: 0;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      background: rgba(6, 9, 16, 0.94);
+      backdrop-filter: blur(18px);
+      transform: translateX(100%);
+      visibility: hidden;
+      transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0.4s;
+    }
+    .settings-panel.open { transform: none; visibility: visible; }
+    .settings-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 18px 18px 6px;
+    }
+    .settings-head h2 { margin: 0; font-size: 17px; font-weight: 700; }
+    #settings-close:hover svg { transform: translateX(-2px); }
+    .lang-list { display: grid; gap: 8px; }
+    .lang-option {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      height: auto;
+      padding: 11px 12px;
+      text-align: left;
+      color: var(--text);
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--line);
+    }
+    .lang-option:hover { transform: none; border-color: var(--line-strong); background: rgba(255,255,255,0.03); }
+    .lang-option .code {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      background: var(--glass-strong);
+      border: 1px solid var(--line);
+      transition: all 0.25s ease;
+    }
+    .lang-option .code svg { width: 16px; height: 16px; }
+    .lang-option .names { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+    .lang-option .names b { font-size: 13px; font-weight: 600; }
+    .lang-option .names small { font-size: 11px; font-weight: 400; color: var(--dim); }
+    .lang-option .tick {
+      width: 18px;
+      height: 18px;
+      opacity: 0;
+      color: var(--cyan);
+      transform: scale(0.5);
+      transition: opacity 0.2s ease, transform 0.3s cubic-bezier(0.34, 1.4, 0.64, 1);
+    }
+    .lang-option.active {
+      border-color: rgba(99, 102, 241, 0.6);
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.16), rgba(34, 211, 238, 0.06));
+    }
+    .lang-option.active .code { color: white; background: var(--grad); border-color: transparent; }
+    .lang-option.active .tick { opacity: 1; transform: none; }
+    .settings-note { margin: 12px 2px 0; color: var(--dim); font-size: 11px; line-height: 1.5; }
+
+    .reveal { animation: rise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+    .reveal:nth-child(2) { animation-delay: 0.05s; }
+    .reveal:nth-child(3) { animation-delay: 0.1s; }
+    .reveal:nth-child(4) { animation-delay: 0.15s; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes grid-move { to { background-position: 0 60px, 0 0; } }
+    @keyframes breathe {
+      0%, 100% { transform: scale(0.9); opacity: 0.7; }
+      50% { transform: scale(1.08); opacity: 1; }
+    }
+    @keyframes wave {
+      0% { transform: scale(1); opacity: 0.8; }
+      100% { transform: scale(1.9); opacity: 0; }
+    }
+    @keyframes logo-pop {
+      from { transform: scale(0.4) rotate(-20deg); opacity: 0; }
+      to { transform: none; opacity: 1; }
+    }
+    @keyframes blink-eye {
+      0%, 92%, 100% { transform: scaleY(1); }
+      96% { transform: scaleY(0.1); }
+    }
+    @keyframes candle {
+      0%, 100% { transform: scaleY(1); }
+      50% { transform: scaleY(0.45); }
+    }
+    @keyframes shimmer { to { background-position: -250% 0; } }
+    @keyframes drift {
+      from { transform: translate(0, 0) scale(1); }
+      to { transform: translate(30px, 20px) scale(1.15); }
+    }
+    @keyframes ring {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      100% { transform: scale(1.25); opacity: 0; }
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-2px); }
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.6); }
+      100% { box-shadow: 0 0 0 8px rgba(52, 211, 153, 0); }
+    }
+    @keyframes shift {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: none; }
+    }
+    @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slide-out { 50% { transform: translate(3px, -3px); } }
+    @keyframes play-pop { 40% { transform: scale(1.25); } 100% { transform: scale(1); } }
+    @keyframes spark { 40% { transform: rotate(-14deg) scale(1.2); } 100% { transform: none; } }
+    @keyframes shake { 25% { transform: translateX(-2px); } 75% { transform: translateX(2px); } }
+    @keyframes tilt { 50% { transform: rotate(-10deg) scale(1.1); } }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="tb-brand">
+      <span class="tb-logo"><svg viewBox="0 0 24 24"><path d="M12 3v3M8 8h8a4 4 0 0 1 4 4v2a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6v-2a4 4 0 0 1 4-4z"/></svg></span>
+      <span>Q-bot PLUS</span>
+    </div>
+    <button id="tb-back" class="tb-btn" type="button" data-i18n-title="nav_back" title="Назад" disabled>
+      <svg viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+    </button>
+    <button id="tb-forward" class="tb-btn" type="button" data-i18n-title="nav_forward" title="Вперёд" disabled>
+      <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </button>
+    <button id="tb-reload" class="tb-btn" type="button" data-i18n-title="nav_reload" title="Обновить">
+      <svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>
+    </button>
+    <button id="tb-home" class="tb-btn" type="button" data-i18n-title="nav_home" title="Quotex">
+      <svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7M5 10v10h5v-6h4v6h5V10"/></svg>
+    </button>
+    <form id="nav" class="omnibox">
+      <span id="tb-secure" class="secure"><svg class="icon" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span>
+      <input id="url" value="https://youlink.biz/3S2M" spellcheck="false" autocomplete="off" aria-label="URL">
+      <button class="go-inline" type="submit" data-i18n-title="open" title="Открыть"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+    </form>
+    <button id="tb-menu" class="tb-btn" type="button" data-i18n-title="nav_menu" title="Меню">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="19" r="1.4" fill="currentColor"/></svg>
+    </button>
+    <div id="tb-progress" class="progress"></div>
+  </div>
+
+  <div id="menu" class="menu" role="menu">
+    <button class="menu-item" type="button" data-action="reload"><svg class="icon" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg><span data-i18n="nav_reload">Обновить</span><span class="kbd">F5</span></button>
+    <button class="menu-item" type="button" data-action="hardReload"><svg class="icon" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7M12 8v4l2 2"/></svg><span data-i18n="nav_hard_reload">Перезагрузить без кэша</span><span class="kbd">Ctrl+Shift+R</span></button>
+    <div class="menu-sep"></div>
+    <div class="zoom-row">
+      <span data-i18n="nav_zoom">Масштаб</span>
+      <button type="button" data-action="zoomOut" aria-label="-">−</button>
+      <b id="zoom-value">100%</b>
+      <button type="button" data-action="zoomIn" aria-label="+">+</button>
+    </div>
+    <button class="menu-item" type="button" data-action="fullscreen"><svg class="icon" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span data-i18n="nav_fullscreen">Полный экран</span><span class="kbd">F11</span></button>
+    <button class="menu-item" type="button" data-action="devtools"><svg class="icon" viewBox="0 0 24 24"><path d="M8 8l-5 4 5 4M16 8l5 4-5 4M14 4l-4 16"/></svg><span data-i18n="nav_devtools">Инструменты разработчика</span><span class="kbd">F12</span></button>
+    <div class="menu-sep"></div>
+    <div class="menu-label" data-i18n="nav_domains">Зеркала брокера</div>
+    <button class="menu-item" type="button" data-action="open:qxbroker.com"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/></svg><span>qxbroker.com</span></button>
+    <button class="menu-item" type="button" data-action="open:quotex.com"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/></svg><span>quotex.com</span></button>
+    <button class="menu-item" type="button" data-action="open:market-qx.pro"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/></svg><span>market-qx.pro</span></button>
+    <div class="menu-sep"></div>
+    <div class="menu-sep"></div>
+    <button id="update-check" class="menu-item" type="button"><svg class="icon" viewBox="0 0 24 24"><path d="M12 3v12M8 11l4 4 4-4M5 21h14"/></svg><span data-i18n="update_check">Проверить обновления</span></button>
+    <div id="update-box" class="update-box" hidden>
+      <p id="update-text"></p>
+      <div id="update-track" class="update-track" hidden><i id="update-fill"></i></div>
+      <button id="update-install" class="update-install" type="button" hidden><span data-i18n="update_install">Перезапустить и установить</span></button>
+    </div>
+    <button class="menu-item" type="button" data-action="quit"><svg class="icon" viewBox="0 0 24 24"><path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10"/></svg><span data-i18n="nav_quit">Выход</span></button>
+  </div>
+
+  <div id="splash" class="splash">
+    <div class="splash-glow"></div>
+    <div class="splash-grid"></div>
+    <div class="splash-center">
+      <div class="orb">
+        <span class="ring"></span>
+        <span class="ring r2"></span>
+        <span class="wave"></span>
+        <span class="wave"></span>
+        <span class="wave"></span>
+        <span class="dot"></span>
+        <div class="orb-logo">
+          <svg viewBox="0 0 24 24"><path d="M12 3v3M8 8h8a4 4 0 0 1 4 4v2a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6v-2a4 4 0 0 1 4-4z"/><circle class="eye" cx="9" cy="13" r="1.1" fill="white" stroke="none"/><circle class="eye" cx="15" cy="13" r="1.1" fill="white" stroke="none"/></svg>
+        </div>
+      </div>
+      <div class="candles" aria-hidden="true"><i></i><i class="down"></i><i></i><i></i><i class="down"></i><i></i><i class="down"></i><i></i></div>
+      <div class="splash-title">Q-bot PLUS</div>
+      <div id="splash-status" class="splash-status"></div>
+      <div class="splash-bar"><i id="splash-fill"></i></div>
+      <div class="splash-meta"><span id="splash-host">youlink.biz</span><span id="splash-percent">0%</span></div>
+      <div class="steps">
+        <span class="step" data-step="connect"><i><svg class="icon" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></i><span data-i18n="step_platform">Платформа</span></span>
+        <span class="step" data-step="page"><i><svg class="icon" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></i><span data-i18n="step_page">Терминал</span></span>
+        <span class="step" data-step="robot"><i><svg class="icon" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></i><span data-i18n="step_robot">Робот</span></span>
+      </div>
+      <div class="splash-error">
+        <b data-i18n="splash_error">Не удалось загрузить страницу</b>
+        <small id="splash-error-text"></small>
+        <button id="splash-retry" type="button"><span data-i18n="splash_retry">Повторить</span></button>
+      </div>
+    </div>
+  </div>
+
+  <aside class="sidebar">
+    <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="grain" aria-hidden="true"></div>
+
+    <header>
+      <div class="mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 3v3M8 8h8a4 4 0 0 1 4 4v2a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6v-2a4 4 0 0 1 4-4z"/><circle cx="9" cy="13" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="13" r="1" fill="currentColor" stroke="none"/></svg>
+      </div>
+      <div class="brand-text">
+        <h1>Q-bot <b>PLUS</b></h1>
+        <span class="badge" id="mode">Торговый робот</span>
+      </div>
+      <button id="settings-btn" class="icon-btn" type="button" data-i18n-title="settings" title="Настройки">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      </button>
+    </header>
+
+    <div id="settings-panel" class="settings-panel" aria-hidden="true">
+      <div class="settings-head">
+        <button id="settings-close" class="icon-btn" type="button" data-i18n-title="back" title="Назад">
+          <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <h2 data-i18n="settings">Настройки</h2>
+      </div>
+      <div class="scroll">
+        <section class="card">
+          <p class="card-title"><svg class="icon" viewBox="0 0 24 24"><path d="M4 5h9M8.5 3v2M6 5c0 4 3 7 6 8M11 5c-1 4-4 7-7 8M13 21l4.5-10L22 21M14.5 17.5h5"/></svg><span data-i18n="language">Язык интерфейса</span></p>
+          <div class="lang-list" id="lang-list">
+            <button class="lang-option" type="button" data-lang="auto">
+              <span class="code"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></span>
+              <span class="names"><b data-i18n="lang_auto">Автоматически</b><small id="lang-detected"></small></span>
+              <svg class="tick icon" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg>
+            </button>
+            <button class="lang-option" type="button" data-lang="ru">
+              <span class="code">RU</span>
+              <span class="names"><b>Русский</b><small>Russian</small></span>
+              <svg class="tick icon" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg>
+            </button>
+            <button class="lang-option" type="button" data-lang="en">
+              <span class="code">EN</span>
+              <span class="names"><b>English</b><small>English</small></span>
+              <svg class="tick icon" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg>
+            </button>
+            <button class="lang-option" type="button" data-lang="pt">
+              <span class="code">PT</span>
+              <span class="names"><b>Português</b><small>Portuguese</small></span>
+              <svg class="tick icon" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg>
+            </button>
+          </div>
+          <p class="settings-note" data-i18n="lang_note">Язык применяется сразу и сохраняется для следующих запусков.</p>
+        </section>
+      </div>
+    </div>
+
+    <div class="scroll">
+      <section class="card hero reveal">
+        <div class="hero-top">
+          <span class="hero-label" data-i18n="profit">Прибыль сессии</span>
+          <span id="state" class="pill">ожидание</span>
+        </div>
+        <div id="profit" class="profit">0</div>
+        <svg class="spark" viewBox="0 0 100 34" preserveAspectRatio="none" aria-hidden="true">
+          <defs>
+            <linearGradient id="sparkGrad" x1="0" x2="1"><stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#22d3ee"/></linearGradient>
+            <linearGradient id="sparkFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#3b82f6" stop-opacity="0.35"/><stop offset="1" stop-color="#3b82f6" stop-opacity="0"/></linearGradient>
+          </defs>
+          <path id="spark-area" class="area" d=""/>
+          <path id="spark-line" d=""/>
+        </svg>
+        <div class="log">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>
+          <span id="log">Сигнал появится после запуска робота.</span>
+        </div>
+      </section>
+
+      <section class="card reveal">
+        <p class="card-title"><svg class="icon" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span data-i18n="trade">Параметры сделки</span></p>
+
+        <label class="field-label" for="investment" data-i18n="investment">Сумма входа</label>
+        <div class="input-wrap">
+          <input id="investment" type="number" min="1" step="1" value="70">
+          <span class="suffix">$</span>
+        </div>
+
+        <div class="grid">
+          <div class="input-group">
+            <label class="field-label" for="stop-loss"><span><span data-i18n="stop_loss">Stop Loss</span><span class="vip-tag">VIP</span></span></label>
+            <div class="input-wrap">
+              <input id="stop-loss" type="number" min="0" step="1" value="10">
+              <span class="suffix">%</span>
+            </div>
+          </div>
+          <div class="input-group">
+            <label class="field-label" for="take-profit"><span><span data-i18n="take_profit">Take Profit</span><span class="vip-tag">VIP</span></span></label>
+            <div class="input-wrap">
+              <input id="take-profit" type="number" min="0" step="1" value="15">
+              <span class="suffix">%</span>
+            </div>
+          </div>
+        </div>
+
+        <label class="field-label" data-i18n="strategy">Стратегия</label>
+        <div class="segmented" id="strategy-seg">
+          <span class="thumb"></span>
+          <button type="button" data-value="MARTIN" data-i18n="s_martin">Мартингейл</button>
+          <button type="button" data-value="AI">AI</button>
+          <button type="button" data-value="BASIC" data-i18n="s_basic">Базовая</button>
+        </div>
+        <select id="strategy" class="hidden">
+          <option value="MARTIN">Мартингейл</option>
+          <option value="AI">AI</option>
+          <option value="BASIC">Базовая</option>
+        </select>
+
+        <div class="range-group">
+          <label class="field-label" for="martin-steps"><span><span data-i18n="martin_steps">Шаги мартингейла</span><span class="vip-tag">VIP</span></span><span class="value" id="martin-steps-label">6</span></label>
+          <input id="martin-steps" type="range" min="1" max="10" value="6">
+        </div>
+
+        <div class="range-group">
+          <label class="field-label" for="signal-strength"><span><span data-i18n="signal">Сила сигнала</span><span class="vip-tag">VIP</span></span><span class="value"><span id="signal-strength-label">35</span>%</span></label>
+          <input id="signal-strength" type="range" min="15" max="100" value="35">
+        </div>
+
+        <div class="toggles">
+          <label class="check"><span class="meta"><b><span data-i18n="otc">OTC-пары</span><span class="vip-tag">VIP</span></b><small data-i18n="otc_d">Торговля внебиржевыми активами</small></span><input id="otc" type="checkbox"></label>
+          <label class="check"><span class="meta"><b><span data-i18n="trailing">Trailing Stop</span><span class="vip-tag">VIP</span></b><small data-i18n="trailing_d">Подтягивать стоп за прибылью</small></span><input id="trailing" type="checkbox"></label>
+          <label class="check"><span class="meta"><b><span data-i18n="reinvest">Реинвест прибыли</span><span class="vip-tag">VIP</span></b><small data-i18n="reinvest_d">Увеличивать ставку из прибыли</small></span><input id="reinvest" type="checkbox"></label>
+        </div>
+      </section>
+    </div>
+
+    <footer>
+      <button id="start" class="start" type="button"><svg viewBox="0 0 24 24"><path d="m8 5 11 7-11 7z"/></svg><span>Запустить робота</span></button>
+      <div class="actions">
+        <button id="ai" class="ghost" type="button"><svg viewBox="0 0 24 24"><path d="M12 3 9.5 9.5 3 12l6.5 2.5L12 21l2.5-6.5L21 12l-6.5-2.5z"/></svg><span data-i18n="ai">AI-анализ</span></button>
+        <button id="stop" class="stop" type="button"><svg viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="1.5"/></svg><span data-i18n="stop">Стоп</span></button>
+      </div>
+      <div class="links">
+        <button id="lessons" type="button"><svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3"/></svg><span data-i18n="lessons">Инструкция</span></button>
+        <button id="vip" type="button"><svg viewBox="0 0 24 24"><path d="M3 8l4 4 5-7 5 7 4-4-2 11H5z"/></svg><span>Купить VIP</span></button>
+      </div>
+      <div id="error" class="error"></div>
+    </footer>
+  </aside>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const vipFields = ["signal-strength", "martin-steps", "otc", "trailing", "stop-loss", "take-profit", "reinvest"];
+    const profitHistory = [];
+    let settingsLoaded = false;
+    let editing = false;
+    let isVip = null;
+    let isRunning = false;
+    let hasLog = false;
+    let startKey = "start";
+    let updateInfo = { state: "idle" };
+
+    const LANG_KEY = "qbot_ui_lang";
+    const LANG_NAMES = { ru: "Русский", en: "English", pt: "Português" };
+    const I18N = {
+      ru: {
+        brand: "Торговый робот", free: "Бесплатный доступ", vip_access: "VIP доступ",
+        settings: "Настройки", back: "Назад", language: "Язык интерфейса",
+        lang_auto: "Автоматически", lang_detected: "Определён: {lang}",
+        lang_note: "Язык применяется сразу и сохраняется для следующих запусков.",
+        profit: "Прибыль сессии", idle: "ожидание", running: "работает",
+        log_default: "Сигнал появится после запуска робота.",
+        site: "Площадка", open: "Открыть", trade: "Параметры сделки",
+        investment: "Сумма входа", stop_loss: "Stop Loss", take_profit: "Take Profit",
+        strategy: "Стратегия", s_martin: "Мартингейл", s_basic: "Базовая",
+        martin_steps: "Шаги мартингейла", signal: "Сила сигнала",
+        otc: "OTC-пары", otc_d: "Торговля внебиржевыми активами",
+        trailing: "Trailing Stop", trailing_d: "Подтягивать стоп за прибылью",
+        reinvest: "Реинвест прибыли", reinvest_d: "Увеличивать ставку из прибыли",
+        start: "Запустить робота", starting: "Запуск...", started: "Робот запущен",
+        ai: "AI-анализ", stop: "Стоп", lessons: "Инструкция",
+        buy_vip: "Купить VIP", vip_active: "VIP активен",
+        nav_back: "Назад", nav_forward: "Вперёд", nav_reload: "Обновить", nav_home: "Главная Quotex",
+        nav_menu: "Меню", nav_hard_reload: "Перезагрузить без кэша", nav_zoom: "Масштаб",
+        nav_fullscreen: "Полный экран", nav_devtools: "Инструменты разработчика",
+        nav_domains: "Зеркала брокера", nav_quit: "Выход",
+        update_check: "Проверить обновления", update_checking: "Проверяем обновления…",
+        update_current: "Установлена последняя версия {version}",
+        update_available: "Найдена версия {version}. Скачиваем…",
+        update_downloading: "Загрузка обновления: {percent}%",
+        update_ready: "Версия {version} загружена. Можно перезапустить.",
+        update_install: "Перезапустить и установить",
+        update_noconfig: "Укажите GitHub-репозиторий в electron/github-update.json",
+        update_error: "Не удалось проверить обновление",
+        splash_connect: "Подключение к платформе…", splash_page: "Загрузка торгового терминала…",
+        splash_robot: "Запуск робота…", splash_ready: "Всё готово", splash_error: "Не удалось загрузить страницу",
+        splash_retry: "Повторить", step_platform: "Платформа", step_page: "Терминал", step_robot: "Робот"
+      },
+      en: {
+        brand: "Trading robot", free: "Free access", vip_access: "VIP access",
+        settings: "Settings", back: "Back", language: "Interface language",
+        lang_auto: "Automatic", lang_detected: "Detected: {lang}",
+        lang_note: "The language is applied instantly and saved for future launches.",
+        profit: "Session profit", idle: "idle", running: "running",
+        log_default: "Signals will appear after the robot starts.",
+        site: "Platform", open: "Open", trade: "Trade settings",
+        investment: "Trade amount", stop_loss: "Stop Loss", take_profit: "Take Profit",
+        strategy: "Strategy", s_martin: "Martingale", s_basic: "Basic",
+        martin_steps: "Martingale steps", signal: "Signal strength",
+        otc: "OTC pairs", otc_d: "Trade over-the-counter assets",
+        trailing: "Trailing Stop", trailing_d: "Move the stop along with profit",
+        reinvest: "Reinvest profit", reinvest_d: "Increase the stake from profit",
+        start: "Start robot", starting: "Starting...", started: "Robot running",
+        ai: "AI analysis", stop: "Stop", lessons: "Guide",
+        buy_vip: "Get VIP", vip_active: "VIP active",
+        nav_back: "Back", nav_forward: "Forward", nav_reload: "Reload", nav_home: "Quotex home",
+        nav_menu: "Menu", nav_hard_reload: "Hard reload", nav_zoom: "Zoom",
+        nav_fullscreen: "Full screen", nav_devtools: "Developer tools",
+        nav_domains: "Broker mirrors", nav_quit: "Exit",
+        update_check: "Check for updates", update_checking: "Checking for updates…",
+        update_current: "You have the latest version {version}",
+        update_available: "Version {version} found. Downloading…",
+        update_downloading: "Downloading update: {percent}%",
+        update_ready: "Version {version} downloaded. Restart to install.",
+        update_install: "Restart and install",
+        update_noconfig: "Set the GitHub repository in electron/github-update.json",
+        update_error: "Could not check for updates",
+        splash_connect: "Connecting to the platform…", splash_page: "Loading trading terminal…",
+        splash_robot: "Starting the robot…", splash_ready: "All set", splash_error: "Failed to load the page",
+        splash_retry: "Retry", step_platform: "Platform", step_page: "Terminal", step_robot: "Robot"
+      },
+      pt: {
+        brand: "Robô de trading", free: "Acesso gratuito", vip_access: "Acesso VIP",
+        settings: "Configurações", back: "Voltar", language: "Idioma da interface",
+        lang_auto: "Automático", lang_detected: "Detectado: {lang}",
+        lang_note: "O idioma é aplicado imediatamente e salvo para as próximas execuções.",
+        profit: "Lucro da sessão", idle: "aguardando", running: "operando",
+        log_default: "Os sinais aparecerão após iniciar o robô.",
+        site: "Plataforma", open: "Abrir", trade: "Parâmetros da operação",
+        investment: "Valor de entrada", stop_loss: "Stop Loss", take_profit: "Take Profit",
+        strategy: "Estratégia", s_martin: "Martingale", s_basic: "Básica",
+        martin_steps: "Etapas do martingale", signal: "Força do sinal",
+        otc: "Pares OTC", otc_d: "Operar ativos de balcão",
+        trailing: "Trailing Stop", trailing_d: "Acompanhar o stop com o lucro",
+        reinvest: "Reinvestir lucro", reinvest_d: "Aumentar a entrada com o lucro",
+        start: "Iniciar robô", starting: "Iniciando...", started: "Robô ativo",
+        ai: "Análise IA", stop: "Parar", lessons: "Instruções",
+        buy_vip: "Comprar VIP", vip_active: "VIP ativo",
+        nav_back: "Voltar", nav_forward: "Avançar", nav_reload: "Recarregar", nav_home: "Início Quotex",
+        nav_menu: "Menu", nav_hard_reload: "Recarregar sem cache", nav_zoom: "Zoom",
+        nav_fullscreen: "Tela cheia", nav_devtools: "Ferramentas do desenvolvedor",
+        nav_domains: "Espelhos da corretora", nav_quit: "Sair",
+        update_check: "Verificar atualizações", update_checking: "Verificando atualizações…",
+        update_current: "A versão {version} já é a mais recente",
+        update_available: "Versão {version} encontrada. Baixando…",
+        update_downloading: "Baixando atualização: {percent}%",
+        update_ready: "Versão {version} baixada. Reinicie para instalar.",
+        update_install: "Reiniciar e instalar",
+        update_noconfig: "Informe o repositório GitHub em electron/github-update.json",
+        update_error: "Não foi possível verificar a atualização",
+        splash_connect: "Conectando à plataforma…", splash_page: "Carregando o terminal de trading…",
+        splash_robot: "Iniciando o robô…", splash_ready: "Tudo pronto", splash_error: "Não foi possível carregar a página",
+        splash_retry: "Tentar novamente", step_platform: "Plataforma", step_page: "Terminal", step_robot: "Robô"
+      }
+    };
+
+    function detectLanguage() {
+      const list = (navigator.languages && navigator.languages.length) ? navigator.languages : [navigator.language || "en"];
+      for (const tag of list) {
+        const code = String(tag).toLowerCase().split("-")[0];
+        if (code === "ru" || ["uk", "be", "kk", "ky", "uz", "tg", "hy", "az"].includes(code)) return "ru";
+        if (code === "pt") return "pt";
+        if (code === "en") return "en";
+      }
+      return "en";
+    }
+
+    function langChoice() {
+      const saved = localStorage.getItem(LANG_KEY);
+      return saved === "ru" || saved === "en" || saved === "pt" ? saved : "auto";
+    }
+
+    function currentLang() {
+      const choice = langChoice();
+      return choice === "auto" ? detectLanguage() : choice;
+    }
+
+    function t(key) {
+      const dict = I18N[currentLang()] || I18N.en;
+      return dict[key] ?? I18N.en[key] ?? key;
+    }
+
+    function applyLanguage() {
+      document.documentElement.lang = currentLang();
+      document.querySelectorAll("[data-i18n]").forEach((el) => { el.textContent = t(el.dataset.i18n); });
+      document.querySelectorAll("[data-i18n-title]").forEach((el) => { el.title = t(el.dataset.i18nTitle); });
+      $("lang-detected").textContent = t("lang_detected").replace("{lang}", LANG_NAMES[detectLanguage()]);
+      document.querySelectorAll(".lang-option").forEach((el) => {
+        el.classList.toggle("active", el.dataset.lang === langChoice());
+      });
+      $("mode").textContent = isVip === null ? t("brand") : t(isVip ? "vip_access" : "free");
+      setLabel("vip", t(isVip ? "vip_active" : "buy_vip"));
+      setLabel("start", t(startKey));
+      $("state").textContent = t(isRunning ? "running" : "idle");
+      if (!hasLog) $("log").textContent = t("log_default");
+      const splashStage = $("splash-status").dataset.stage;
+      if (splashStage) $("splash-status").textContent = t("splash_" + splashStage);
+      renderUpdate();
+      syncStrategy();
+    }
+
+    function toggleSettings(open) {
+      $("settings-panel").classList.toggle("open", open);
+      $("settings-panel").setAttribute("aria-hidden", String(!open));
+    }
+
+    function formPatch() {
+      return {
+        "start-invest": Number($("investment").value) || 1,
+        "stop-loss": Number($("stop-loss").value) || 0,
+        "take-profit": Number($("take-profit").value) || 0,
+        "trading-straregia": $("strategy").value,
+        "martin-steps": Number($("martin-steps").value) || 1,
+        "signal-strength": Number($("signal-strength").value) || 15,
+        "deal-otc": $("otc").checked ? "ON" : "OFF",
+        "trailing-stop": $("trailing").checked,
+        "auto-reinvest": $("reinvest").checked
+      };
+    }
+
+    function paintRange(id) {
+      const el = $(id);
+      const p = ((el.value - el.min) / (el.max - el.min)) * 100;
+      el.style.setProperty("--p", p + "%");
+      $(id + "-label").textContent = el.value;
+    }
+
+    function syncStrategy() {
+      const buttons = [...document.querySelectorAll("#strategy-seg button")];
+      const index = Math.max(0, buttons.findIndex((b) => b.dataset.value === $("strategy").value));
+      buttons.forEach((b, i) => b.classList.toggle("active", i === index));
+      document.querySelector("#strategy-seg .thumb").style.transform = "translateX(" + index * 100 + "%)";
+    }
+
+    function fill(settings) {
+      if (!settings || editing) return;
+      $("investment").value = settings["start-invest"] ?? 70;
+      $("stop-loss").value = settings["stop-loss"] ?? 10;
+      $("take-profit").value = settings["take-profit"] ?? 15;
+      $("strategy").value = settings["trading-straregia"] || "MARTIN";
+      $("martin-steps").value = settings["martin-steps"] ?? 6;
+      $("signal-strength").value = settings["signal-strength"] ?? 35;
+      paintRange("martin-steps");
+      paintRange("signal-strength");
+      syncStrategy();
+      $("otc").checked = settings["deal-otc"] === "ON";
+      $("trailing").checked = settings["trailing-stop"] === true || settings["trailing-stop"] === "true";
+      $("reinvest").checked = settings["auto-reinvest"] === true || settings["auto-reinvest"] === "true";
+      applyVip(String(settings.PD || "0") === "1");
+    }
+
+    function applyVip(vip) {
+      if (vip === isVip) return;
+      isVip = vip;
+      $("mode").textContent = t(vip ? "vip_access" : "free");
+      $("mode").classList.toggle("vip", vip);
+      setLabel("vip", t(vip ? "vip_active" : "buy_vip"));
+      vipFields.forEach((id) => {
+        const field = $(id);
+        field.disabled = !vip;
+        const row = field.closest(".check, .input-group, .range-group");
+        if (row) row.classList.toggle("locked", !vip);
+      });
+    }
+
+    function drawSpark() {
+      const values = profitHistory.length > 1 ? profitHistory : [0, 0];
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+      const span = max - min || 1;
+      const step = 100 / (values.length - 1);
+      const points = values.map((v, i) => [i * step, 30 - ((v - min) / span) * 26]);
+      const line = points.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
+      $("spark-line").setAttribute("d", line);
+      $("spark-area").setAttribute("d", line + " L100 34 L0 34 Z");
+    }
+
+    function setLabel(id, text) {
+      const label = $(id).querySelector("span");
+      if (label) label.textContent = text;
+    }
+
+    function showError(text) {
+      $("error").textContent = text || "";
+    }
+
+    document.querySelectorAll("#strategy-seg button").forEach((button) => {
+      button.addEventListener("click", () => {
+        $("strategy").value = button.dataset.value;
+        syncStrategy();
+        $("strategy").dispatchEvent(new Event("change"));
+      });
+    });
+    ["martin-steps", "signal-strength"].forEach((id) => {
+      $(id).addEventListener("input", () => paintRange(id));
+    });
+    $("settings-btn").addEventListener("click", () => toggleSettings(true));
+    $("settings-close").addEventListener("click", () => toggleSettings(false));
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") toggleSettings(false);
+    });
+    document.querySelectorAll(".lang-option").forEach((button) => {
+      button.addEventListener("click", () => {
+        if (button.dataset.lang === "auto") localStorage.removeItem(LANG_KEY);
+        else localStorage.setItem(LANG_KEY, button.dataset.lang);
+        applyLanguage();
+      });
+    });
+    window.addEventListener("languagechange", () => {
+      if (langChoice() === "auto") applyLanguage();
+    });
+
+    paintRange("martin-steps");
+    paintRange("signal-strength");
+    applyLanguage();
+    drawSpark();
+
+    $("nav").addEventListener("submit", (event) => {
+      event.preventDefault();
+      window.qbot.navigate($("url").value);
+      $("url").blur();
+    });
+    ["investment", "stop-loss", "take-profit", "strategy", "martin-steps", "signal-strength", "otc", "trailing", "reinvest"].forEach((id) => {
+      $(id).addEventListener("focus", () => { editing = true; });
+      $(id).addEventListener("change", async () => {
+        paintRange("martin-steps");
+        paintRange("signal-strength");
+        await window.qbot.save(formPatch());
+        editing = false;
+      });
+    });
+    $("start").addEventListener("click", async () => {
+      showError("");
+      startKey = "starting";
+      setLabel("start", t(startKey));
+      await window.qbot.save(formPatch());
+      const result = await window.qbot.start();
+      startKey = result && result.ok ? "started" : "start";
+      setLabel("start", t(startKey));
+      if (result && result.error) showError(result.error);
+    });
+    $("stop").addEventListener("click", () => window.qbot.stop());
+    $("ai").addEventListener("click", async () => {
+      const result = await window.qbot.ai();
+      if (result && result.error) showError(result.error);
+    });
+    $("lessons").addEventListener("click", () => {
+      window.qbot.openExternal("https://ai-tradingbot.pro/qbot/lesons.html");
+    });
+    $("vip").addEventListener("click", () => {
+      window.qbot.openExternal("https://ai-tradingbot.pro/buy/vip.php");
+    });
+    let pageLoading = false;
+
+    function setTopProgress(loading) {
+      const bar = $("tb-progress");
+      if (loading) {
+        if (bar.classList.contains("on")) return;
+        bar.classList.remove("done");
+        bar.style.transition = "none";
+        bar.style.width = "0";
+        void bar.offsetWidth;
+        bar.style.transition = "";
+        bar.style.width = "";
+        bar.classList.add("on");
+      } else if (bar.classList.contains("on")) {
+        bar.classList.remove("on");
+        bar.classList.add("done");
+        setTimeout(() => {
+          if (!bar.classList.contains("on")) bar.classList.remove("done");
+        }, 800);
+      }
+    }
+
+    const STAGES = ["connect", "page", "robot", "ready"];
+    const STAGE_TARGET = { connect: 28, page: 62, robot: 88, ready: 100 };
+    const splashState = { stage: "connect", target: 6, value: 0, finished: false };
+
+    function renderSplashStage() {
+      const index = STAGES.indexOf(splashState.stage);
+      document.querySelectorAll(".step").forEach((step) => {
+        const stepIndex = STAGES.indexOf(step.dataset.step);
+        step.classList.toggle("done", stepIndex < index);
+        step.classList.toggle("active", stepIndex === index);
+      });
+      $("splash-status").dataset.stage = splashState.stage;
+      $("splash-status").textContent = t("splash_" + splashState.stage);
+    }
+
+    function setSplashStage(data) {
+      if (!data || splashState.finished) return;
+      if (data.shown) {
+        finishSplash(true);
+        return;
+      }
+      const splash = $("splash");
+      if (data.stage === "error") {
+        splash.classList.add("error");
+        $("splash-error-text").textContent = data.description ? data.description + " (" + data.code + ")" : "";
+        return;
+      }
+      splash.classList.remove("error");
+      const next = STAGES.indexOf(data.stage);
+      if (next < 0) return;
+      if (data.stage === "connect" && splashState.stage !== "connect") splashState.value = 0;
+      splashState.stage = data.stage;
+      splashState.target = STAGE_TARGET[data.stage];
+      renderSplashStage();
+    }
+
+    function finishSplash(instant) {
+      if (splashState.finished) return;
+      splashState.finished = true;
+      const splash = $("splash");
+      const reveal = () => {
+        window.qbot.showSite();
+        splash.classList.add("hide");
+      };
+      if (instant) {
+        reveal();
+        return;
+      }
+      splash.classList.add("leaving");
+      setTimeout(reveal, 450);
+    }
+
+    function splashTick() {
+      if (splashState.finished) return;
+      const cap = splashState.stage === "ready" ? 100 : STAGE_TARGET[splashState.stage] + 8;
+      if (splashState.target < cap) splashState.target += 0.03;
+      const speed = splashState.stage === "ready" ? 0.14 : 0.05;
+      splashState.value += (splashState.target - splashState.value) * speed;
+      if (splashState.stage === "ready" && splashState.value > 99.4) splashState.value = 100;
+      $("splash-fill").style.width = splashState.value.toFixed(2) + "%";
+      $("splash-percent").textContent = Math.round(splashState.value) + "%";
+      if (splashState.value >= 100) {
+        setTimeout(() => finishSplash(false), 250);
+        return;
+      }
+      requestAnimationFrame(splashTick);
+    }
+
+    $("splash-retry").addEventListener("click", () => {
+      $("splash").classList.remove("error");
+      setSplashStage({ stage: "connect" });
+      browser("reload");
+    });
+    renderSplashStage();
+    requestAnimationFrame(splashTick);
+    window.qbot.onLoadStage(setSplashStage);
+    window.qbot.loadStage().then(setSplashStage);
+
+    function renderNav(state) {
+      if (!state) return;
+      pageLoading = !!state.loading;
+      $("tb-back").disabled = !state.canGoBack;
+      $("tb-forward").disabled = !state.canGoForward;
+      $("tb-reload").classList.toggle("loading", pageLoading);
+      setTopProgress(pageLoading);
+      if (state.url) {
+        try { $("splash-host").textContent = new URL(state.url).host; } catch (e) { /* адрес ещё пустой */ }
+        $("tb-secure").classList.toggle("insecure", !state.url.startsWith("https://"));
+        if (document.activeElement !== $("url")) $("url").value = state.url;
+      }
+      if (state.zoom) $("zoom-value").textContent = state.zoom + "%";
+    }
+
+    function browser(action) {
+      return window.qbot.browser(action).then(renderNav);
+    }
+
+    function toggleMenu(open) {
+      $("menu").classList.toggle("open", open);
+    }
+
+    function renderUpdate(info) {
+      if (info) updateInfo = info;
+      const box = $("update-box");
+      const track = $("update-track");
+      const install = $("update-install");
+      const state = updateInfo.state;
+      if (!state || state === "idle") {
+        box.hidden = true;
+        return;
+      }
+      box.hidden = false;
+      const version = updateInfo.next || updateInfo.version || "";
+      const key = {
+        checking: "update_checking",
+        current: "update_current",
+        available: "update_available",
+        downloading: "update_downloading",
+        ready: "update_ready",
+        noconfig: "update_noconfig",
+        error: "update_error",
+      }[state];
+      let text = key ? t(key) : "";
+      text = text.replace("{version}", version).replace("{percent}", String(updateInfo.percent || 0));
+      if (state === "error" && updateInfo.message) text += "\n" + updateInfo.message;
+      $("update-text").textContent = text;
+      const showTrack = state === "downloading" || state === "available";
+      track.hidden = !showTrack;
+      $("update-fill").style.width = (state === "available" ? 8 : updateInfo.percent || 0) + "%";
+      install.hidden = state !== "ready";
+    }
+
+    $("update-check").addEventListener("click", (event) => {
+      event.stopPropagation();
+      window.qbot.checkUpdate();
+    });
+    $("update-install").addEventListener("click", (event) => {
+      event.stopPropagation();
+      window.qbot.installUpdate();
+    });
+    window.qbot.onUpdate(renderUpdate);
+    window.qbot.updateState().then(renderUpdate);
+
+    $("tb-back").addEventListener("click", () => browser("back"));
+    $("tb-forward").addEventListener("click", () => browser("forward"));
+    $("tb-reload").addEventListener("click", () => browser(pageLoading ? "stop" : "reload"));
+    $("tb-home").addEventListener("click", () => browser("home"));
+    $("tb-menu").addEventListener("click", (event) => {
+      event.stopPropagation();
+      toggleMenu(!$("menu").classList.contains("open"));
+    });
+    document.querySelectorAll("#menu [data-action]").forEach((item) => {
+      item.addEventListener("click", () => {
+        const action = item.dataset.action;
+        if (!action.startsWith("zoom")) toggleMenu(false);
+        browser(action);
+      });
+    });
+    document.addEventListener("click", (event) => {
+      if (!event.target.closest("#menu")) toggleMenu(false);
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") toggleMenu(false);
+    });
+    $("url").addEventListener("focus", () => $("url").select());
+    window.qbot.onNavState(renderNav);
+    window.qbot.onFocusAddress(() => {
+      $("url").focus();
+      $("url").select();
+    });
+    window.qbot.navState().then(renderNav);
+
+    window.qbot.onNavigated((url) => {
+      if (document.activeElement !== $("url")) $("url").value = url;
+      settingsLoaded = false;
+    });
+
+    async function refresh() {
+      try {
+        const data = await window.qbot.state();
+        if (!data) return;
+        const profitText = String(data.profit || "0");
+        const profitValue = parseFloat(profitText.replace(/[^\d.,-]/g, "").replace(",", ".")) || 0;
+        $("profit").textContent = profitText;
+        $("profit").className = "profit" + (profitValue > 0 ? " up" : profitValue < 0 ? " down" : "");
+        if (profitHistory[profitHistory.length - 1] !== profitValue || profitHistory.length < 2) {
+          profitHistory.push(profitValue);
+          if (profitHistory.length > 40) profitHistory.shift();
+          drawSpark();
+        }
+        hasLog = !!data.log;
+        isRunning = !!data.running;
+        $("log").textContent = data.log || t("log_default");
+        $("state").textContent = t(isRunning ? "running" : "idle");
+        $("state").className = data.running ? "pill on" : "pill";
+        $("start").classList.toggle("live", !!data.running);
+        if (data.ready) applyVip(!!data.vip);
+        if (data.ready && !settingsLoaded) {
+          const settings = await window.qbot.settings();
+          fill(settings);
+          settingsLoaded = true;
+        }
+      } catch (e) {
+        /* страница ещё открывается */
+      }
+    }
+    setInterval(refresh, 1000);
+    refresh();
+  </script>
+</body>
+</html>

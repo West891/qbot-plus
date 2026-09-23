@@ -1,0 +1,59 @@
+{
+  "manifest_version": 3,
+  "name": "Q-bot PLUS",
+  "description": "Q-BOT Trading robot for quotex",
+  "version": "1.0",
+  "icons": {
+    "16": "logo/logo-16.png",
+    "48": "logo/logo-48.png",
+    "128": "logo/logo-128.png"
+  },
+  "options_page": "settings/settings.html",
+  "action": {
+    "default_title": "Trading robot for quotex",
+    "default_popup": "popup/popup.html"
+  },
+  "permissions": ["activeTab", "storage"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "service-worker.js"
+  },
+  "content_scripts": [
+    {
+      "js": [
+        "css/jquery-3.6.0.min.js",
+        "css/jquery-ui.js",
+        "main/dom-resolver.js",
+        "main/content.js",
+        "main/loadpage.js",
+        "main/deal.js",
+        "main/buyvip.js",
+        "main/aianalys.js"
+      ],
+      "css": ["css/style.css"],
+      "matches": [
+        "https://quotex.com/*",
+        "https://qxbroker.com/*",
+        "https://market-qx.pro/*",
+        "https://market.qx.trade/*",
+        "https://broker-qx.pro/*",
+        "https://market-qx.trade/*",
+        "https://market-qx.info/*"
+      ]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["css/font/*.ttf", "css/font/*.woff", "css/font/*.woff2"],
+      "matches": [
+        "https://quotex.com/*",
+        "https://qxbroker.com/*",
+        "https://market-qx.pro/*",
+        "https://market.qx.trade/*",
+        "https://broker-qx.pro/*",
+        "https://market-qx.trade/*",
+        "https://market-qx.info/*"
+      ]
+    }
+  ]
+}

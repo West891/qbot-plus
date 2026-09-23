@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome Q-BOT 2.0</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(ellipse at center, #0a0a0a 0%, #000000 70%), 
+                        conic-gradient(from 0deg at 50% 50%, #1a1a2e, #16213e, #0f0f23, #1a1a2e);
+            color: #e0e0e0;
+            padding: 20px;
+            width: 400px;
+            max-width: 500px;
+            margin: 0 auto;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Animated background particles */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                radial-gradient(1px 1px at 10px 15px, #ffffff10, transparent),
+                radial-gradient(1px 1px at 20px 35px, #2196f330, transparent),
+                radial-gradient(1px 1px at 45px 20px, #2196f330, transparent),
+                radial-gradient(1px 1px at 65px 40px, #2196f320, transparent);
+            background-repeat: repeat;
+            background-size: 100px 50px;
+            animation: particleMove 20s linear infinite;
+            pointer-events: none;
+        }
+
+        @keyframes particleMove {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(-100px, -50px); }
+        }
+
+        .cyber-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                linear-gradient(rgba(33, 150, 243, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(33, 150, 243, 0.02) 1px, transparent 1px);
+            background-size: 15px 15px;
+            pointer-events: none;
+            animation: gridMove 20s linear infinite;
+        }
+
+        @keyframes gridMove {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(15px, 15px); }
+        }
+
+        .container {
+            background: linear-gradient(145deg, 
+                rgba(30, 30, 46, 0.95) 0%,
+                rgba(45, 45, 68, 0.95) 50%,
+                rgba(25, 25, 40, 0.95) 100%);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.8),
+                0 0 30px rgba(33, 150, 243, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1),
+                inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 450px;
+            overflow: hidden;
+            border: 1px solid rgba(33, 150, 243, 0.3);
+            position: relative;
+            text-align: center;
+        }
+
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(33, 150, 243, 0.1), transparent);
+            animation: scan 4s ease-in-out infinite;
+        }
+
+        @keyframes scan {
+            0%, 100% { left: -100%; }
+            50% { left: 100%; }
+        }
+
+        h4 {
+            font-family: 'Orbitron', monospace;
+            font-size: 24px;
+            font-weight: 900;
+            background: linear-gradient(135deg, #2196f3, #21cbf3, #2196f3);
+            background-size: 200% 200%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin: 0 0 20px 0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            animation: titleGlow 3s ease-in-out infinite;
+            position: relative;
+        }
+
+        @keyframes titleGlow {
+            0%, 100% { 
+                background-position: 0% 50%;
+                filter: drop-shadow(0 0 10px rgba(33, 150, 243, 0.5));
+            }
+            50% { 
+                background-position: 100% 50%;
+                filter: drop-shadow(0 0 20px rgba(33, 150, 243, 0.8));
+            }
+        }
+
+        .main-link {
+            display: inline-block;
+            padding: 15px 25px;
+            background: linear-gradient(135deg, #2196f3 0%, #21cbf3 50%, #2196f3 100%);
+            background-size: 200% 200%;
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            font-family: 'Orbitron', monospace;
+            font-size: 18px;
+            font-weight: 700;
+            text-decoration: none;
+            margin: 20px 0;
+            transition: all 0.4s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 
+                0 10px 25px rgba(33, 150, 243, 0.4),
+                inset 0 2px 0 rgba(255, 255, 255, 0.3);
+            animation: buttonGlow 3s ease-in-out infinite;
+            position: relative;
+            overflow: hidden;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        @keyframes buttonGlow {
+            0%, 100% {
+                background-position: 0% 50%;
+                box-shadow: 
+                    0 10px 25px rgba(33, 150, 243, 0.4),
+                    inset 0 2px 0 rgba(255, 255, 255, 0.3);
+            }
+            50% {
+                background-position: 100% 50%;
+                box-shadow: 
+                    0 15px 35px rgba(33, 150, 243, 0.6),
+                    inset 0 2px 0 rgba(255, 255, 255, 0.4);
+            }
+        }
+
+        .main-link::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.8s ease;
+        }
+
+        .main-link:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 
+                0 15px 35px rgba(33, 150, 243, 0.6),
+                0 0 30px rgba(33, 150, 243, 0.3),
+                inset 0 2px 0 rgba(255, 255, 255, 0.4);
+        }
+
+        .main-link:hover::before {
+            left: 100%;
+        }
+
+        hr {
+            border: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(33, 150, 243, 0.5), transparent);
+            margin: 25px 0;
+        }
+
+        .logo {
+            width: 120px;
+            height: 120px;
+            margin: 20px auto;
+            border-radius: 50%;
+            border: 2px solid rgba(33, 150, 243, 0.3);
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            animation: logoFloat 3s ease-in-out infinite;
+        }
+
+        @keyframes logoFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .refresh-text {
+            font-size: 16px;
+            margin: 20px 0;
+            line-height: 1.5;
+        }
+
+        .refresh-link {
+            color: #2196f3;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .refresh-link:hover {
+            color: #21cbf3;
+            text-shadow: 0 0 10px rgba(33, 203, 243, 0.5);
+        }
+
+        .refresh-link::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 0;
+            height: 1px;
+            background: linear-gradient(90deg, #2196f3, #21cbf3);
+            transition: width 0.3s ease;
+        }
+
+        .refresh-link:hover::after {
+            width: 100%;
+        }
+
+        .contacts {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(33, 150, 243, 0.2);
+        }
+
+        .contacts-title {
+            font-family: 'Orbitron', monospace;
+            color: #2196f3;
+            font-size: 18px;
+            margin-bottom: 15px;
+            letter-spacing: 1px;
+        }
+
+        .contact-links {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .contact-link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #e0e0e0;
+            text-decoration: none;
+            padding: 12px 20px;
+            border-radius: 12px;
+            background: rgba(33, 150, 243, 0.1);
+            border: 1px solid rgba(33, 150, 243, 0.2);
+            transition: all 0.3s ease;
+            width: 100%;
+            max-width: 280px;
+            font-weight: 500;
+        }
+
+        .contact-link:hover {
+            background: rgba(33, 150, 243, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(33, 150, 243, 0.3);
+        }
+
+        .telegram-icon {
+            font-size: 20px;
+            color: #2196f3;
+        }
+
+        .bot-icon {
+            font-size: 20px;
+            color: #4CAF50;
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 15px;
+            }
+            
+            .container {
+                padding: 20px;
+            }
+            
+            h4 {
+                font-size: 20px;
+            }
+            
+            .main-link {
+                font-size: 16px;
+                padding: 12px 20px;
+            }
+            
+            .logo {
+                width: 150px;
+                height: 150px;
+            }
+            
+            .refresh-text {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="cyber-grid"></div>
+    
+    <div class="container">
+        <h4>Welcome Q-BOT 2.0</h4>
+        
+        <a href="https://youlink.biz/3S2M" target="_blank" class="main-link">
+            Start using the Q-BOT ▷
+        </a>
+        
+        <hr>
+        
+        <div class="logo">
+            <img src="https://ai-tradingbot.pro/img/qb.png" alt="Q-BOT Logo">
+        </div>
+        
+        <p class="refresh-text">
+            If your robot does not load, 
+            <a href="https://youlink.biz/3S2M" target="_blank" class="refresh-link">
+                Click refresh
+            </a>
+        </p>
+        
+        <div class="contacts">
+            <div class="contacts-title">CONTACTS</div>
+            <div class="contact-links">
+                <a href="https://t.me/o_signals1" target="_blank" class="contact-link">
+                    <span class="telegram-icon">📱</span>
+                    Telegram: @o_signals1
+                </a>
+                <a href="https://t.me/o_signals1" target="_blank" class="contact-link">
+                    <span class="bot-icon">🤖</span>
+                    Telegram Bot
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
