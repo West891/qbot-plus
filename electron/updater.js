@@ -61,15 +61,11 @@ function setupUpdater() {
   };
 
   if (!app.isPackaged) {
-    autoUpdater.forceDevUpdateConfig = true;
-    const yml = [
-      "provider: github",
-      "owner: " + repo.owner,
-      "repo: " + repo.repo,
-      "updaterCacheDirName: qbot-plus-updater",
-      "",
-    ].join("\n");
-    fs.writeFileSync(path.join(app.getAppPath(), "dev-app-update.yml"), yml);
+    return {
+      state: () => lastStatus,
+      check: () => Promise.resolve(lastStatus),
+      install() {},
+    };
   }
 
   autoUpdater.on("checking-for-update", () => {

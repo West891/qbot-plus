@@ -56,10 +56,11 @@ const Utils = {
    * @returns {number}
    */
   cleanBalance(balance) {
-    if (!balance) return 0;
-    const cleaned = String(balance).replace(/[,\$₸R€₽₹£\s]/g, "");
-    const parsed = Number(cleaned);
-    return isNaN(parsed) ? 0 : Math.round(parsed);
+    if (balance == null || balance === "") return 0;
+    if (typeof QbotDom.parseBalanceText === "function") return QbotDom.parseBalanceText(balance);
+    const cleaned = String(balance).replace(/[^\d,.-]/g, "");
+    const parsed = Number(cleaned.replace(/,/g, ""));
+    return isNaN(parsed) ? 0 : Math.round(parsed * 100) / 100;
   },
 
   /**
@@ -201,6 +202,13 @@ function removeMisplacedQbotPanel() {
   men.remove();
 }
 
+const qbotAccount = { stage: "login", id: null, vip: null };
+globalThis.__QBOT_ACCOUNT__ = qbotAccount;
+
+function setQbotAccount(patch) {
+  Object.assign(qbotAccount, patch);
+}
+
 const SELECTORS = {
   /** Старая шапка + новая (PiLdZ / rymiA + icon-caret) */
   PANEL_BOT: "#men",
@@ -283,7 +291,7 @@ const AUTO_PICK_MIN_PAYOUT = 70;
 const AUTO_PICK_CLICK_DELAY_MS = 300;
 
 /** Кнопка «+» выбора актива: старая / #asset-select--button / svg.icon-plus */
-function findAssetSelectPlusButton() {
+function findAssetSelectPlusButtonRaw() {
   return (
     document.querySelector(
       "button.CAZSg.wupmB.BEz9j:has(svg.icon-plus)"
@@ -296,6 +304,11 @@ function findAssetSelectPlusButton() {
     document.querySelector(".ZRFGh button:has(svg.icon-plus)") ||
     null
   );
+}
+
+function findAssetSelectPlusButton() {
+  const found = findAssetSelectPlusButtonRaw();
+  return globalThis.QbotHeal ? QbotHeal.settle("assetAdd", found) : found;
 }
 
 /** Вкладка «Валюты» в модалке (чтобы не только крипта OTC) */
@@ -941,8 +954,8 @@ class TradingBot {
 
     // --- 2. Обработчик кнопки "STOP" ---
     const handleStop = () => {
-      localStorage.setItem("statusbot", "notwork");
-      location.reload();
+      if (typeof stopRobot === "function") stopRobot();
+      else localStorage.setItem("statusbot", "notwork");
     };
 
     // Используем делегирование для кнопки (на случай, если она пересоздаётся)
@@ -958,8 +971,23 @@ class TradingBot {
    * @returns {Promise<string|null>}
    */
   async getUserId() {
+    const loggedIn = QbotDom.findBalance() || QbotDom.extractUserIdFromPage();
+    if (!loggedIn) {
+      setQbotAccount({ stage: "login" });
+      await Utils.delay(2000);
+      return this.getUserId();
+    }
+    if (qbotAccount.stage === "login") setQbotAccount({ stage: "id" });
+
+    // Шапка дорисовывается после баланса. Пока меню не появилось, попытки не тратим.
+    if (!QbotDom.extractUserIdFromPage() && !QbotDom.findUserMenu()) {
+      await Utils.delay(1000);
+      return this.getUserId();
+    }
+
     if (this.attempts >= this.maxAttempts) {
       console.error("Превышено максимальное количество попыток получения ID.");
+      setQbotAccount({ stage: "error" });
       return null;
     }
 
@@ -970,25 +998,22 @@ class TradingBot {
 
       if (!userId) {
         userMenu = await QbotDom.waitForUserMenu(TIMEOUTS.USER_MENU_TIMEOUT);
-        const clickTarget =
-          QbotDom.findUserMenu() ||
-          QbotDom.pickClickable(userMenu) ||
-          userMenu;
-        QbotDom.simulateClick(clickTarget);
-        await Utils.delay(350);
+        const menuTarget = () =>
+          QbotDom.findUserMenu() || QbotDom.pickClickable(userMenu) || userMenu;
 
-        userId = await waitForUserIdAfterMenuOpen(
-          TIMEOUTS.DROPDOWN_TIMEOUT
-        );
+        QbotDom.trustedClick(menuTarget());
+        userId = await waitForUserIdAfterMenuOpen(2500).catch(() => null);
+
+        if (!userId) {
+          QbotDom.simulateClick(menuTarget());
+          userId = await waitForUserIdAfterMenuOpen(TIMEOUTS.DROPDOWN_TIMEOUT).catch(() => null);
+        }
         if (!userId) {
           throw new Error("ID пользователя не найден в dropdown");
         }
 
-        QbotDom.simulateClick(
-          QbotDom.findUserMenu() ||
-            QbotDom.pickClickable(userMenu) ||
-            userMenu
-        );
+        await Utils.delay(200);
+        QbotDom.trustedClick(menuTarget());
         await Utils.delay(150);
       }
 
@@ -1001,7 +1026,9 @@ class TradingBot {
 
       //-----------------------------------------------------
 
+      setQbotAccount({ stage: "access", id: userId });
       await this.syncUserData(userId);
+      setQbotAccount({ stage: "ready", id: userId, vip: storage["PD"] === "1" });
       this.attempts = 0; // Сброс при успехе
       return userId;
     } catch (error) {
@@ -1155,17 +1182,16 @@ class TradingBot {
    */
   async getBalance() {
     try {
-      const balanceElement = await waitForBalanceElement(
-        TIMEOUTS.BALANCE_TIMEOUT
-      );
-      const balanceText = balanceElement.textContent;
-
-      console.log("Исходный баланс:", balanceText);
-      const cleanBalance = Utils.cleanBalance(balanceText);
-      console.log("Очищенный баланс:", cleanBalance);
-
-      localStorage.setItem("startBalance", cleanBalance.toString());
-      return cleanBalance;
+      if (typeof QbotDom.readHeaderBalance === "function") {
+        const header = await QbotDom.readHeaderBalance();
+        if (header != null && header > 0) {
+          console.log("Баланс из шапки:", header);
+          localStorage.setItem("startBalance", String(header));
+          return header;
+        }
+      }
+      console.warn("Баланс в блоке DEMO/LIVE ACCOUNT не найден.");
+      return 0;
     } catch (error) {
       console.error("Ошибка получения баланса:", error.message);
       return 0;

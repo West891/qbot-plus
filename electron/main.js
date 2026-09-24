@@ -14,6 +14,11 @@ const { setupUpdater } = require("./updater");
 
 const ROOT = path.join(__dirname, "..");
 const WORLD_ID = 1001;
+
+if (!app.isPackaged) {
+  app.commandLine.appendSwitch("remote-debugging-port", "9333");
+  app.commandLine.appendSwitch("remote-allow-origins", "http://127.0.0.1:9333");
+}
 const START_URL = "https://youlink.biz/3S2M";
 const BROKER_PARTITION = "persist:qbot";
 
@@ -31,6 +36,7 @@ const CONTENT_SCRIPTS = [
   "css/jquery-3.6.0.min.js",
   "css/jquery-ui.js",
   "main/dom-resolver.js",
+  "main/dom-healer.js",
   "main/content.js",
   "main/loadpage.js",
   "main/deal.js",
@@ -121,10 +127,10 @@ function buildChromeShim(cssText) {
       globalThis.__QBOT_SIDEBAR_API__ = {
         state() {
           const men = document.getElementById("men");
+          const storedProfit = localStorage.getItem("qbot_session_profit");
           const profit = document.getElementById("resbalance");
           const log = document.querySelector("#qbot-header-dock .log");
-          const hid = document.querySelector("#qbot-header-dock .hid");
-          const running = !!hid && getComputedStyle(hid).visibility !== "hidden";
+          const running = localStorage.getItem("statusbot") === "work";
           let settings = null;
           try {
             settings = JSON.parse(localStorage.getItem("qbot_settings") || "null");
@@ -133,12 +139,32 @@ function buildChromeShim(cssText) {
           }
           return {
             title: men ? men.textContent.replace(/\\s+/g, " ").trim() : "Q-bot",
-            profit: profit ? profit.textContent.trim() : "0",
+            profit: storedProfit != null && storedProfit !== "" ? storedProfit : (profit ? profit.textContent.trim() : "0"),
             log: log ? log.textContent.replace(/\\s+/g, " ").trim() : "",
             running,
             vip: String((settings && settings.PD) || "0") === "1",
-            ready: typeof start === "function"
+            ready: typeof start === "function",
+            account: globalThis.__QBOT_ACCOUNT__
+              ? {
+                  stage: globalThis.__QBOT_ACCOUNT__.stage,
+                  id: globalThis.__QBOT_ACCOUNT__.id,
+                  vip: globalThis.__QBOT_ACCOUNT__.vip
+                }
+              : null,
+            dom: globalThis.QbotHeal ? globalThis.QbotHeal.summary() : null
           };
+        },
+        dom(action, key, label, hint) {
+          const heal = globalThis.QbotHeal;
+          if (!heal) return { ok: false, error: "not-ready" };
+          if (action === "report") return { ok: true, items: heal.report() };
+          if (action === "pick") return heal.startPicker(key, label, hint);
+          if (action === "cancel") return heal.stopPicker();
+          if (action === "confirm") return heal.confirm(key, true);
+          if (action === "reject") return heal.confirm(key, false);
+          if (action === "forget") return heal.forget(key);
+          if (action === "highlight") return heal.highlight(key, label);
+          return { ok: false, error: "unknown-action" };
         },
         settings() {
           try {
@@ -158,15 +184,28 @@ function buildChromeShim(cssText) {
           const hid = document.querySelector("#qbot-header-dock .hid");
           if (hid) hid.style.visibility = "visible";
           localStorage.setItem("statusbot", "work");
+          localStorage.setItem("qbot_session_profit", "0");
+          const profit = document.getElementById("resbalance");
+          if (profit) profit.textContent = "0";
           if (typeof start !== "function") {
             return { ok: false, error: "Робот ещё загружается. Подождите пару секунд." };
           }
-          start();
+          (async () => {
+            try {
+              if (typeof QbotDom.readHeaderBalance === "function") {
+                const balance = await QbotDom.readHeaderBalance();
+                if (balance > 0) localStorage.setItem("startBalance", String(balance));
+              }
+            } catch (e) {}
+            start();
+          })();
           return { ok: true };
         },
         stop() {
+          if (typeof stopRobot === "function") return stopRobot();
           localStorage.setItem("statusbot", "notwork");
-          location.reload();
+          const hid = document.querySelector("#qbot-header-dock .hid");
+          if (hid) hid.style.visibility = "hidden";
           return { ok: true };
         },
         ai() {
@@ -260,6 +299,67 @@ function sessionStatePath() {
   return path.join(app.getPath("userData"), "session-state.json");
 }
 
+function proxyStatePath() {
+  return path.join(app.getPath("userData"), "proxy.json");
+}
+
+function readProxyConfig() {
+  try {
+    const data = JSON.parse(fs.readFileSync(proxyStatePath(), "utf8"));
+    if (data && typeof data === "object") return data;
+  } catch (e) {
+    return null;
+  }
+  return null;
+}
+
+function normalizeProxyConfig(raw) {
+  const source = raw && typeof raw === "object" ? raw : {};
+  const scheme = ["http", "https", "socks5", "socks4"].includes(source.scheme)
+    ? source.scheme
+    : "http";
+  const host = String(source.host || "").trim().slice(0, 253);
+  const port = Math.round(Number(source.port));
+  const username = String(source.username || "").slice(0, 128);
+  const password = String(source.password || "").slice(0, 128);
+  return {
+    enabled: source.enabled === true && !!host && port >= 1 && port <= 65535,
+    scheme,
+    host,
+    port: port >= 1 && port <= 65535 ? port : null,
+    username,
+    password,
+  };
+}
+
+function saveProxyConfig(config) {
+  fs.mkdirSync(path.dirname(proxyStatePath()), { recursive: true });
+  fs.writeFileSync(proxyStatePath(), JSON.stringify(config));
+}
+
+function applyProxy(config) {
+  if (config.enabled) {
+    const rules = config.scheme + "://" + config.host + ":" + config.port;
+    brokerSession().setProxy({ proxyRules: rules, proxyBypassRules: "<local>" });
+  } else {
+    brokerSession().setProxy({ mode: "system" });
+  }
+  brokerSession().__qbotProxyAuth = config.enabled
+    ? { username: config.username, password: config.password }
+    : null;
+}
+
+function publicProxy(config) {
+  return {
+    enabled: config.enabled,
+    scheme: config.scheme,
+    host: config.host,
+    port: config.port,
+    username: config.username,
+    hasPassword: !!config.password,
+  };
+}
+
 function readSessionState() {
   try {
     const data = JSON.parse(fs.readFileSync(sessionStatePath(), "utf8"));
@@ -308,6 +408,7 @@ function siteWebPreferences() {
     contextIsolation: true,
     nodeIntegration: false,
     sandbox: true,
+    backgroundThrottling: false,
   };
 }
 
@@ -317,6 +418,7 @@ function shellWebPreferences() {
     contextIsolation: true,
     nodeIntegration: false,
     sandbox: true,
+    backgroundThrottling: false,
   };
 }
 
@@ -471,9 +573,24 @@ function createWindow(targetUrl) {
     sendUrl(url);
     sendNavState();
   });
-  ["did-start-loading", "did-stop-loading", "page-title-updated", "zoom-changed"].forEach(
+  let mainFrameLoading = false;
+  view.webContents.on("did-start-navigation", (_event, _url, isInPlace, isMainFrame) => {
+    if (!isMainFrame || isInPlace) return;
+    mainFrameLoading = true;
+    sendNavState();
+  });
+  const stopMainFrame = () => {
+    mainFrameLoading = false;
+    sendNavState();
+  };
+  view.webContents.on("did-stop-loading", stopMainFrame);
+  view.webContents.on("did-fail-load", (_event, _code, _desc, _url, isMainFrame) => {
+    if (isMainFrame) stopMainFrame();
+  });
+  ["did-navigate", "did-navigate-in-page", "page-title-updated", "zoom-changed"].forEach(
     (name) => view.webContents.on(name, sendNavState)
   );
+  view.webContents.isLoadingMainFrame = () => mainFrameLoading;
   bindShortcuts(win, view.webContents);
   bindShortcuts(win, win.webContents);
 
@@ -510,6 +627,15 @@ app.whenReady().then(() => {
   session.defaultSession.setUserAgent(userAgent);
   brokerSession().setUserAgent(userAgent);
 
+  const proxyConfig = normalizeProxyConfig(readProxyConfig());
+  applyProxy(proxyConfig);
+  brokerSession().on("login", (event, _details, authInfo, callback) => {
+    const auth = brokerSession().__qbotProxyAuth;
+    if (!authInfo.isProxy || !auth || !auth.username) return;
+    event.preventDefault();
+    callback(auth.username, auth.password);
+  });
+
   protocol.handle("qbot", (request) => {
     let pathname = "/";
     try {
@@ -535,6 +661,199 @@ app.whenReady().then(() => {
     }
 
     return net.fetch(pathToFileURL(fullPath).toString());
+  });
+
+  function parseHeaderMoney(text) {
+    let raw = String(text || "").replace(/\s/g, "").replace(/[^\d,.-]/g, "");
+    if (!raw) return null;
+    if (raw.includes(",") && raw.includes(".")) {
+      raw = raw.lastIndexOf(",") > raw.lastIndexOf(".")
+        ? raw.replace(/\./g, "").replace(",", ".")
+        : raw.replace(/,/g, "");
+    } else if (raw.includes(",")) {
+      raw = /,\d{1,2}$/.test(raw) ? raw.replace(",", ".") : raw.replace(/,/g, "");
+    }
+    const value = Math.round(Number(raw) * 100) / 100;
+    return Number.isFinite(value) && value >= 0 ? value : null;
+  }
+
+  function moneyFromHtml(html) {
+    const match = String(html || "").match(/class="[^"]*\bbalance\b[^"]*"[^>]*>\s*([^<]+)/i);
+    if (!match) return null;
+    const text = match[1].trim();
+    const value = parseHeaderMoney(text);
+    return value == null ? null : { text, value };
+  }
+
+  async function sendOnPage(contents, method, params) {
+    const dbg = contents.debugger;
+    try {
+      if (!dbg.isAttached()) dbg.attach("1.3");
+    } catch (attachError) {
+      if (app.isPackaged) throw attachError;
+      return sendOnDebugPort(contents, method, params);
+    }
+    return dbg.sendCommand(method, params || {});
+  }
+
+  const debugSockets = new Map();
+
+  function debugSocket(contents) {
+    const cached = debugSockets.get(contents.id);
+    if (cached) return cached;
+    const opening = (async () => {
+      const list = await (await fetch("http://127.0.0.1:9333/json/list")).json();
+      const pageUrl = contents.getURL();
+      const page = list.find((item) => item.type === "page" && item.webSocketDebuggerUrl && item.url === pageUrl)
+        || list.find((item) => item.type === "page" && item.webSocketDebuggerUrl && /qxbroker|quotex|market-qx|broker-qx/.test(item.url || ""));
+      if (!page) throw new Error("Страница брокера не найдена в отладчике");
+      const ws = new WebSocket(page.webSocketDebuggerUrl);
+      await new Promise((resolve, reject) => {
+        ws.addEventListener("open", resolve, { once: true });
+        ws.addEventListener("error", () => reject(new Error("Нет соединения с отладчиком")), { once: true });
+      });
+      let seq = 0;
+      const pending = new Map();
+      ws.addEventListener("message", (msg) => {
+        const data = JSON.parse(msg.data);
+        const done = data.id && pending.get(data.id);
+        if (!done) return;
+        pending.delete(data.id);
+        if (data.error) done.reject(new Error(data.error.message || "cdp"));
+        else done.resolve(data.result || {});
+      });
+      return {
+        send(method, params) {
+          const id = ++seq;
+          return new Promise((resolve, reject) => {
+            pending.set(id, { resolve, reject });
+            ws.send(JSON.stringify({ id, method, params: params || {} }));
+          });
+        }
+      };
+    })();
+    debugSockets.set(contents.id, opening);
+    opening.catch(() => debugSockets.delete(contents.id));
+    contents.once("destroyed", () => debugSockets.delete(contents.id));
+    return opening;
+  }
+
+  async function sendOnDebugPort(contents, method, params) {
+    const socket = await debugSocket(contents);
+    return socket.send(method, params);
+  }
+
+  let headerBalanceChain = Promise.resolve();
+
+  async function readPaintedHeaderBalance(contents) {
+    if (!contents || contents.isDestroyed()) return null;
+    const rect = await contents.executeJavaScript(
+      `(() => {
+        const host = document.querySelector("qx-usermenu-trigger");
+        if (!host) return null;
+        const r = host.getBoundingClientRect();
+        if (r.width < 8 || r.height < 8) return null;
+        return { x: r.left, y: r.top, w: r.width, h: r.height };
+      })()`,
+      true
+    );
+    if (!rect) return null;
+    const send = (method, params) => sendOnPage(contents, method, params);
+    await send("DOM.getDocument", { depth: 0, pierce: true });
+    const spots = [
+      [0.45, 0.72],
+      [0.32, 0.74],
+      [0.58, 0.68],
+      [0.5, 0.55],
+      [0.4, 0.5],
+    ];
+    for (const [fx, fy] of spots) {
+      let hit;
+      try {
+        hit = await send("DOM.getNodeForLocation", {
+          x: Math.round(rect.x + rect.w * fx),
+          y: Math.round(rect.y + rect.h * fy),
+          includeUserAgentShadowDOM: true,
+        });
+      } catch (e) {
+        continue;
+      }
+      let nodeId = hit && hit.nodeId;
+      for (let step = 0; step < 5 && nodeId; step++) {
+        let html = "";
+        try {
+          const outer = await send("DOM.getOuterHTML", { nodeId });
+          html = outer.outerHTML || "";
+        } catch (e) {
+          html = "";
+        }
+        const found = moneyFromHtml(html);
+        if (found && html.length < 2500) return found;
+        let described;
+        try {
+          described = await send("DOM.describeNode", { nodeId });
+        } catch (e) {
+          break;
+        }
+        const parentId = described.node && described.node.parentId;
+        if (!parentId || parentId === nodeId) break;
+        nodeId = parentId;
+      }
+    }
+    return null;
+  }
+
+  ipcMain.handle("qbot-header-balance", async (event) => {
+    const contents = event.sender;
+    const run = headerBalanceChain.then(() => readPaintedHeaderBalance(contents));
+    headerBalanceChain = run.catch(() => null);
+    try {
+      const found = await run;
+      if (found) console.log("[Q-bot] Баланс шапки:", found.text);
+      return found;
+    } catch (e) {
+      console.warn("[Q-bot] Баланс шапки не прочитан:", e && e.message ? e.message : e);
+      return null;
+    }
+  });
+
+  ipcMain.handle("qbot-page-settings", async (event) => {
+    const contents = event.sender;
+    if (contents.isDestroyed()) return null;
+    try {
+      return await contents.executeJavaScript(
+        `(() => {
+          const s = window.settings;
+          if (!s || typeof s !== "object") return null;
+          return {
+            id: s.id == null ? null : String(s.id),
+            isDemo: !!(s.isDemo || s.isDemoProfile),
+            liveBalance: s.liveBalance,
+            demoBalance: s.demoBalance
+          };
+        })()`,
+        true
+      );
+    } catch (e) {
+      return null;
+    }
+  });
+
+  ipcMain.handle("qbot-trusted-click", async (event, point) => {
+    const contents = event.sender;
+    if (contents.isDestroyed()) return false;
+    const zoom = contents.getZoomFactor() || 1;
+    const x = Math.round(Number(point && point.x) * zoom);
+    const y = Math.round(Number(point && point.y) * zoom);
+    if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0) return false;
+    console.log("[Q-bot] trusted click", x, y);
+    contents.focus();
+    contents.sendInputEvent({ type: "mouseEnter", x, y });
+    contents.sendInputEvent({ type: "mouseMove", x, y });
+    contents.sendInputEvent({ type: "mouseDown", x, y, button: "left", clickCount: 1 });
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    contents.sendInputEvent({ type: "mouseUp", x, y, button: "left", clickCount: 1 });
+    return true;
   });
 
   ipcMain.handle("qbot-capture", async (event) => {
@@ -616,6 +935,80 @@ app.whenReady().then(() => {
     );
   });
 
+  ipcMain.handle("qbot-dom", (event, request) => {
+    const input = request && typeof request === "object" ? request : {};
+    const allowed = ["report", "pick", "cancel", "confirm", "reject", "forget", "highlight"];
+    const action = allowed.includes(input.action) ? input.action : null;
+    if (!action) return { ok: false };
+    const args = [action, input.key, input.label, input.hint].map((value) =>
+      JSON.stringify(value == null ? null : String(value).slice(0, 200))
+    );
+    const contents = siteContentsFrom(event.sender);
+    if (action === "pick" && contents && !contents.isDestroyed()) contents.focus();
+    return runInBot(
+      contents,
+      "globalThis.__QBOT_SIDEBAR_API__ ? globalThis.__QBOT_SIDEBAR_API__.dom(" + args.join(",") + ") : { ok: false }"
+    );
+  });
+
+  ipcMain.handle("qbot-flags", async () => {
+    try {
+      return await fs.promises.readFile(path.join(__dirname, "flags.svg"), "utf8");
+    } catch (e) {
+      return "";
+    }
+  });
+  ipcMain.handle("qbot-signals", async (_event, tf) => {
+    const allowed = { 1: "1", 5: "5", 15: "15", 30: "30", 60: "60" };
+    const frame = allowed[Number(tf)] || "1";
+    try {
+      const response = await net.fetch(
+        "https://ai-tradebot.com/gptanalys/autosearch.php?tf=" + frame
+      );
+      if (!response.ok) return { ok: false, error: "http" };
+      const data = await response.json();
+      if (!data || data.ok === false || data.error) return { ok: false, error: data && data.error ? data.error : "bad" };
+      const ranked = Array.isArray(data.ranked) && data.ranked.length
+        ? data.ranked
+        : data.pair
+          ? [{
+              pair: data.pair,
+              price: data.price,
+              signal: data.signal,
+              action: data.action,
+              overall: data.overall,
+              score: data.score,
+              strength: data.strength,
+            }]
+          : [];
+      return { ok: true, tf: data.tf, ranked };
+    } catch (e) {
+      return { ok: false, error: "network" };
+    }
+  });
+
+  ipcMain.handle("qbot-open-signal", async (event, raw) => {
+    const symbol = String(raw && raw.symbol || "").replace(/[^A-Z]/g, "");
+    const way = raw && raw.way === "UP" ? "UP" : raw && raw.way === "DOWN" ? "DOWN" : "";
+    if (symbol.length < 6 || !way) return { ok: false };
+    const code = `(() => {
+      try {
+        const symbol = ${JSON.stringify(symbol)};
+        const way = ${JSON.stringify(way)};
+        const tabs = QbotDom.collectPairTabs ? QbotDom.collectPairTabs() : [];
+        const tab = tabs.find((item) => String(QbotDom.getPairTabName(item) || "").replace(/[^A-Za-z]/g, "").toUpperCase().includes(symbol));
+        if (tab) (QbotDom.getPairTabClickTarget(tab) || tab).click();
+        const button = QbotDom.findTradeDirectionButton(way);
+        if (!button) return { ok: false, found: !!tab };
+        setTimeout(() => button.click(), tab ? 700 : 0);
+        return { ok: true, found: !!tab };
+      } catch (e) {
+        return { ok: false };
+      }
+    })()`;
+    return runInBot(siteContentsFrom(event.sender), code);
+  });
+
   ipcMain.handle("qbot-ai", (event) => {
     return runInBot(
       siteContentsFrom(event.sender),
@@ -625,12 +1018,40 @@ app.whenReady().then(() => {
 
   ipcMain.handle("qbot-open-external", (_event, url) => {
     const target = String(url || "");
-    if (target.startsWith("https://ai-tradingbot.pro/")) {
+    if (
+      target.startsWith("https://ai-tradingbot.pro/") ||
+      target.startsWith("https://ai-tradebot.com/") ||
+      target === "https://t.me/o_signals1"
+    ) {
       shell.openExternal(target);
     }
   });
 
   const updater = setupUpdater();
+  ipcMain.handle("qbot-proxy-get", () => publicProxy(normalizeProxyConfig(readProxyConfig())));
+
+  ipcMain.handle("qbot-proxy-set", (_event, raw) => {
+    const current = normalizeProxyConfig(readProxyConfig());
+    const incoming = raw && typeof raw === "object" ? raw : {};
+    const next = normalizeProxyConfig({
+      enabled: incoming.enabled,
+      scheme: incoming.scheme,
+      host: incoming.host,
+      port: incoming.port,
+      username: incoming.username,
+      password: typeof incoming.password === "string" ? incoming.password : current.password,
+    });
+    if (incoming.enabled === true && !next.enabled) {
+      return { ok: false, error: "bad-proxy", proxy: publicProxy(current) };
+    }
+    saveProxyConfig(next);
+    applyProxy(next);
+    for (const view of siteViews.values()) {
+      if (!view.webContents.isDestroyed()) view.webContents.reload();
+    }
+    return { ok: true, proxy: publicProxy(next) };
+  });
+
   ipcMain.handle("qbot-update-state", () => updater.state());
   ipcMain.handle("qbot-update-check", () => updater.check());
   ipcMain.handle("qbot-update-install", () => {

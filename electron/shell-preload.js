@@ -22,6 +22,15 @@ contextBridge.exposeInMainWorld("qbot", {
   ai() {
     return ipcRenderer.invoke("qbot-ai");
   },
+  flags() {
+    return ipcRenderer.invoke("qbot-flags");
+  },
+  signals(tf) {
+    return ipcRenderer.invoke("qbot-signals", tf);
+  },
+  openSignal(payload) {
+    return ipcRenderer.invoke("qbot-open-signal", payload);
+  },
   openExternal(url) {
     return ipcRenderer.invoke("qbot-open-external", url);
   },
@@ -48,6 +57,15 @@ contextBridge.exposeInMainWorld("qbot", {
   },
   onFocusAddress(callback) {
     ipcRenderer.on("qbot-focus-address", () => callback());
+  },
+  dom(action, key, label, hint) {
+    return ipcRenderer.invoke("qbot-dom", { action, key, label, hint });
+  },
+  proxy() {
+    return ipcRenderer.invoke("qbot-proxy-get");
+  },
+  setProxy(config) {
+    return ipcRenderer.invoke("qbot-proxy-set", config);
   },
   updateState() {
     return ipcRenderer.invoke("qbot-update-state");

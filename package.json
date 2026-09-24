@@ -1,7 +1,7 @@
 {
   "name": "qbot-plus",
   "productName": "Q-bot PLUS",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Q-bot PLUS desktop app for Quotex",
   "main": "electron/main.js",

@@ -1,17 +1,3 @@
-function getCleanBalance() {
-  const element = QbotDom.findBalance();
-  if (!element) {
-    console.warn("Элемент баланса не найден.");
-    return 0;
-  }
-
-  const balanceText = element.innerText || element.textContent;
-  const cleaned = balanceText.replace(/[,\$₸R€₽₹£\s]/g, "").trim();
-
-  const parsed = parseFloat(cleaned);
-  return isNaN(parsed) ? 0 : Math.round(parsed);
-}
-
 const QBOT_STORAGE_KEY = "qbot_settings";
 
 /** Настройки из localStorage (в deal.js нельзя полагаться на `storage` из content.js — разные скоупы) */
@@ -44,6 +30,7 @@ function getTradingStrategy() {
 }
 
 const QBOT_LAST_DEAL_AMOUNT_KEY = "qbot_last_deal_amount";
+const QBOT_HISTORY_BEFORE_KEY = "qbot_history_before";
 
 /** Сумма инвестиции всегда целое число (не меньше 1). */
 function roundInvestmentAmount(n) {
@@ -67,6 +54,7 @@ function investmentInputLabelText(inp) {
 
 /** Поле времени экспирации — не путать с суммой (в UI оно обычно выше) */
 function isTimeFieldQuotex(inp) {
+  if (/^\s*\d{1,2}:\d{2}/.test(String(inp?.value || ""))) return true;
   const lab = investmentInputLabelText(inp);
   if (
     /\btime\b|время|врем\.|expir|duration|таймфрейм|тайм\b|интервал|expire\b|\bминут|\bсекунд|\bmin(?:ute|utes)?\b|\bsec(?:ond|onds)?\b/i.test(
@@ -115,8 +103,13 @@ function investmentInputsNearTradeButton(tb, arr) {
   return filtered.length ? filtered : arr;
 }
 
-/** Поле суммы: на Quotex два степпера ._hHHo — сверху время, ниже инвестиции */
 function findTradeInvestmentInput() {
+  const found = findTradeInvestmentInputRaw();
+  return globalThis.QbotHeal ? QbotHeal.settle("investInput", found) : found;
+}
+
+/** Поле суммы: на Quotex два степпера ._hHHo — сверху время, ниже инвестиции */
+function findTradeInvestmentInputRaw() {
   const tb = document.getElementById("trade-button");
 
   const steppers = Array.from(
@@ -434,32 +427,169 @@ function setInvestmentFieldValue(input, num) {
   return false;
 }
 
-/** База для мартингейла: последняя реальная ставка из openDeal, иначе поле, иначе настройки */
-function getAmountForNextMartin() {
-  const last = parseFloat(
-    localStorage.getItem(QBOT_LAST_DEAL_AMOUNT_KEY) || "",
-    10
-  );
-  if (!Number.isNaN(last) && last > 0) return roundInvestmentAmount(last);
-  const inp = findTradeInvestmentInput();
-  const v = inp
-    ? parseFloat(String(inp.value).replace(/[^0-9.]/g, ""), 10)
-    : NaN;
-  if (!Number.isNaN(v) && v > 0) return roundInvestmentAmount(v);
-  return roundInvestmentAmount(getQbotSettings()["start-invest"] ?? 1);
+const QBOT_MARTIN_KEY = "qbot_martin";
+let qbotCycleBusy = false;
+let qbotStartTimer = null;
+let qbotDealTimer = null;
+
+function robotStopped() {
+  return localStorage.getItem("statusbot") === "notwork";
+}
+
+function scheduleStart(delay) {
+  clearTimeout(qbotStartTimer);
+  if (robotStopped()) {
+    qbotCycleBusy = false;
+    return;
+  }
+  qbotStartTimer = setTimeout(() => {
+    qbotStartTimer = null;
+    qbotCycleBusy = false;
+    if (!robotStopped()) start();
+  }, delay);
+}
+
+function stopRobot() {
+  localStorage.setItem("statusbot", "notwork");
+  qbotCycleBusy = false;
+  clearTimeout(qbotStartTimer);
+  qbotStartTimer = null;
+  if (qbotDealTimer) {
+    clearInterval(qbotDealTimer);
+    qbotDealTimer = null;
+  }
+  if (typeof window !== "undefined") window.__QBOT_DEAL_OPENING__ = false;
+  const hid = document.querySelector("#qbot-header-dock .hid");
+  if (hid) hid.style.visibility = "hidden";
+  console.log("[Q-bot] Робот остановлен");
+  return { ok: true };
+}
+
+function normalizeSignalDirection(raw) {
+  const value = String(raw ?? "").trim().toUpperCase();
+  if (["UP", "CALL", "BUY", "HIGH", "HIGHER", "ВВЕРХ", "ВЫШЕ"].includes(value)) return "UP";
+  if (["DOWN", "PUT", "SELL", "LOW", "LOWER", "ВНИЗ", "НИЖЕ"].includes(value)) return "DOWN";
+  if (value === "NONE" || value === "NULL" || value === "") return "none";
+  return null;
+}
+
+function martinLimit() {
+  const settings = getQbotSettings();
+  const parsed = parseInt(settings["martin-steps"] ?? settings["martin-step"] ?? 6, 10);
+  return Number.isFinite(parsed) && parsed >= 1 ? parsed : 6;
+}
+
+function readMartinState() {
+  try {
+    const state = JSON.parse(localStorage.getItem(QBOT_MARTIN_KEY) || "null");
+    if (state && Number(state.base) > 0) {
+      return {
+        base: roundInvestmentAmount(state.base),
+        step: Math.max(0, parseInt(state.step, 10) || 0),
+      };
+    }
+  } catch (e) {
+    /* ignore */
+  }
+  return null;
+}
+
+function beginMartinCycle(base) {
+  const amount = roundInvestmentAmount(base);
+  localStorage.setItem(QBOT_MARTIN_KEY, JSON.stringify({ base: amount, step: 0 }));
+  localStorage.setItem("MartinSteps", "0");
+  localStorage.setItem(QBOT_LAST_DEAL_AMOUNT_KEY, String(amount));
+  return amount;
+}
+
+function peekNextMartinAmount(coef) {
+  const state = readMartinState();
+  if (!state || state.step >= martinLimit()) return null;
+  return roundInvestmentAmount(state.base * Math.pow(coef, state.step + 1));
+}
+
+function commitMartinStep() {
+  const state = readMartinState();
+  if (!state) return;
+  const step = state.step + 1;
+  localStorage.setItem(QBOT_MARTIN_KEY, JSON.stringify({ base: state.base, step }));
+  localStorage.setItem("MartinSteps", String(step));
+}
+
+function readExpiryMs() {
+  for (const input of document.querySelectorAll("input")) {
+    const match = String(input.value || "").match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+    if (!match) continue;
+    const hours = match[3] ? Number(match[1]) : 0;
+    const minutes = match[3] ? Number(match[2]) : Number(match[1]);
+    const seconds = match[3] ? Number(match[3]) : Number(match[2]);
+    const ms = ((hours * 60 + minutes) * 60 + seconds) * 1000;
+    if (ms >= 5000 && ms <= 60 * 60 * 1000) return ms;
+  }
+  return 60000;
+}
+
+function readLatestHistoryRow() {
+  const row = document.querySelector("div.lCITV");
+  if (!row) return null;
+  const text = (row.textContent || "").replace(/\s+/g, " ").trim();
+  const match = text.match(/^([+-])?\s*([\d\s,.]+)\s*\$/);
+  if (!match) return null;
+  const amount = QbotDom.parseBalanceText((match[1] || "") + match[2]);
+  if (!Number.isFinite(amount)) return null;
+  const parentText = (row.parentElement?.textContent || "").replace(/\s+/g, " ").trim();
+  const stakeMatch = parentText.match(/([\d\s,.]+)\s*\$/);
+  const stake = stakeMatch ? QbotDom.parseBalanceText(stakeMatch[1]) : null;
+  return {
+    text,
+    amount,
+    stake: Number.isFinite(stake) && stake > 0 ? stake : null,
+  };
+}
+
+function settleDeal(history, stake, balanceDelta) {
+  const invest = history && history.stake > 0 ? history.stake : stake;
+  if (history && Math.abs(history.amount) < 0.01 && invest > 0) {
+    return { kind: "loss", delta: -invest };
+  }
+  if (history && history.amount > 0.009 && invest > 0) {
+    const profit = Math.round((history.amount - invest) * 100) / 100;
+    if (Math.abs(profit) < 0.02) return { kind: "refund", delta: 0 };
+    if (profit > 0) return { kind: "win", delta: profit };
+    return { kind: "loss", delta: profit };
+  }
+  if (!Number.isFinite(balanceDelta) || Math.abs(balanceDelta) < 0.01) {
+    return { kind: "refund", delta: 0 };
+  }
+  if (balanceDelta < -0.009) {
+    return { kind: "loss", delta: Math.round(balanceDelta * 100) / 100 };
+  }
+  return { kind: "win", delta: Math.round(balanceDelta * 100) / 100 };
+}
+
+async function readFreshBalance() {
+  if (typeof QbotDom.readHeaderBalance !== "function") return NaN;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const header = await QbotDom.readHeaderBalance();
+    if (Number.isFinite(header) && header > 0) return header;
+    await new Promise((resolve) => setTimeout(resolve, 300));
+  }
+  return NaN;
 }
 
 // Обновление профита
-function updateProfit() {
+async function updateProfit() {
   try {
-    const currentBalance = Number(getCleanBalance());
-    if (isNaN(currentBalance)) {
+    const currentBalance = Number(localStorage.getItem("sesionBalance"));
+    if (!Number.isFinite(currentBalance) || currentBalance <= 0) {
       console.error("Invalid current balance value");
       return;
     }
 
-    const startBalance = Number(localStorage.getItem("startBalance")) || 0;
-    const profit = currentBalance - startBalance;
+    const summed = Number(localStorage.getItem("qbot_session_profit"));
+    const profit = Number.isFinite(summed)
+      ? Math.round(summed * 100) / 100
+      : Math.round((currentBalance - (Number(localStorage.getItem("startBalance")) || currentBalance)) * 100) / 100;
 
     const profitElement = document.getElementById("resbalance");
     if (profitElement) {
@@ -488,24 +618,23 @@ const getPairTabClickTarget = (tab) => QbotDom.getPairTabClickTarget(tab);
 
 // Запуск новой сделки
 async function start() {
+  if (localStorage.getItem("statusbot") === "notwork") return;
+  if (qbotCycleBusy) return;
+  qbotCycleBusy = true;
+
   if (hasOpenTradesPreventingNewDeal()) {
     console.warn("[Q-bot] Есть открытые сделки — ждём закрытия перед новым циклом.");
-    setTimeout(start, 1500);
+    scheduleStart(1500);
     return;
   }
 
-  localStorage.setItem("MartinSteps", "0");
-  const baseInv = roundInvestmentAmount(getQbotSettings()["start-invest"] ?? 1);
-  localStorage.setItem(QBOT_LAST_DEAL_AMOUNT_KEY, String(baseInv));
-
-  const currentBalance = getCleanBalance();
-  localStorage.setItem("sesionBalance", currentBalance);
+  const baseInv = beginMartinCycle(getQbotSettings()["start-invest"] ?? 1);
 
   const labelElements = collectPairTabElements();
 
   if (labelElements.length === 0) {
     console.warn("Нет доступных валютных пар.");
-    setTimeout(start, 2000);
+    scheduleStart(2000);
     return;
   }
 
@@ -532,7 +661,7 @@ async function start() {
 
   localStorage.setItem("numpara", String(randomIndex));
 
-  const clickTarget = getPairTabClickTarget(selectedTab);
+  const clickTarget = getPairTabClickTarget(selectedTab) || selectedTab;
   try {
     clickTarget.scrollIntoView({
       behavior: "smooth",
@@ -572,29 +701,28 @@ async function start() {
 
     console.log("Сигнал получен:", data);
 
-    const signal = Array.isArray(data) ? data[0] : data;
+    const signal = normalizeSignalDirection(Array.isArray(data) ? data[0] : data);
     const logElement = document.querySelector(".log");
     if (logElement) {
-      logElement.textContent = `${symbol} - ${signal}`;
+      logElement.textContent = `${symbol} - ${signal || "нет"}`;
     }
 
-    if (signal === "none") {
+    if (signal === "none" || !signal) {
       console.log("Сигнал не найден. Повтор через 1.5 сек.");
-      setTimeout(start, 1500);
+      scheduleStart(1500);
       return;
     }
 
     if (hasOpenTradesPreventingNewDeal()) {
       console.warn("[Q-bot] Перед открытием появились открытые сделки — откладываем.");
-      setTimeout(start, 1500);
+      scheduleStart(1500);
       return;
     }
 
-    const investment = String(getQbotSettings()["start-invest"] ?? "1");
-    openDeal(signal, investment, symbol);
+    openDeal(signal, baseInv, symbol);
   } catch (error) {
     console.error("Ошибка при получении сигнала:", error);
-    setTimeout(start, 2000);
+    scheduleStart(2000);
   }
 }
 
@@ -636,6 +764,7 @@ function adjustInvestmentByStepperThen(input, target, onDone) {
   const pause = 26;
   let n = 0;
   const step = () => {
+    if (robotStopped()) return;
     const cur = readNumericFromInvestmentField(input);
     if (investmentFieldMatchesAmount(target, cur) || n >= maxSteps) {
       if (n >= maxSteps && !investmentFieldMatchesAmount(target, cur)) {
@@ -657,15 +786,23 @@ function adjustInvestmentByStepperThen(input, target, onDone) {
 }
 
 // Открытие сделки
-function openDeal(direction, amount, symbol) {
+function openDeal(direction, amount, symbol, attempt = 0, onOpened = null) {
+  if (robotStopped()) return;
+  const way = normalizeSignalDirection(direction);
+  if (!way) {
+    console.error("[Q-bot] Неизвестное направление:", direction);
+    scheduleStart(1000);
+    return;
+  }
+
   if (hasOpenTradesPreventingNewDeal()) {
     console.warn("[Q-bot] Есть открытые сделки — открытие отложено до закрытия.");
-    setTimeout(() => openDeal(direction, amount, symbol), 1200);
+    setTimeout(() => openDeal(way, amount, symbol, attempt, onOpened), 1200);
     return;
   }
 
   if (typeof window !== "undefined" && window.__QBOT_DEAL_OPENING__) {
-    console.warn("[Q-bot] Уже выполняется открытие сделки — пропуск.");
+    setTimeout(() => openDeal(way, amount, symbol, attempt, onOpened), 700);
     return;
   }
   if (typeof window !== "undefined") {
@@ -694,22 +831,37 @@ function openDeal(direction, amount, symbol) {
     console.warn("[Q-bot] Ошибка установки суммы:", e);
   }
 
-  const clickDirection = () => {
+  const clickDirection = async () => {
+    if (robotStopped()) return;
     try {
-      const button = findTradeDirectionButton(direction);
+      const button = findTradeDirectionButton(way);
       if (button) {
+        const before = await readFreshBalance();
+        if (!Number.isFinite(before) || before <= 0) {
+          console.warn("[Q-bot] Не вижу сумму в блоке DEMO/LIVE ACCOUNT, сделку не открываю.");
+          if (typeof window !== "undefined") window.__QBOT_DEAL_OPENING__ = false;
+          scheduleStart(1000);
+          return;
+        }
+        localStorage.setItem("sesionBalance", String(before));
+        const historyBefore = readLatestHistoryRow();
+        localStorage.setItem(QBOT_HISTORY_BEFORE_KEY, historyBefore ? historyBefore.text : "");
+        console.log("[Q-bot] Баланс перед сделкой:", before);
         button.click();
-        console.log(
-          `[Q-bot] Сделка: ${direction} | ${symbol} | задано $${amt}`
-        );
-        setTimeout(() => activeDeal(direction, symbol), 3500);
+        if (typeof onOpened === "function") onOpened();
+        console.log(`[Q-bot] Сделка: ${way} | ${symbol} | задано $${amt}`);
+        setTimeout(() => activeDeal(way, symbol), 3500);
+      } else if (attempt < 5) {
+        window.__QBOT_DEAL_OPENING__ = false;
+        console.warn("[Q-bot] Кнопка Выше/Ниже не найдена, повтор:", way);
+        setTimeout(() => openDeal(way, amount, symbol, attempt + 1, onOpened), 600);
       } else {
-        console.error("[Q-bot] Кнопка Выше/Ниже не найдена:", direction);
-        setTimeout(start, 1000);
+        console.error("[Q-bot] Кнопка Выше/Ниже не найдена:", way);
+        scheduleStart(1000);
       }
     } catch (e2) {
       console.error("[Q-bot] openDeal:", e2);
-      setTimeout(start, 1000);
+      scheduleStart(1000);
     }
   };
 
@@ -727,156 +879,152 @@ function openDeal(direction, amount, symbol) {
 
 // Проверка активности сделки
 function activeDeal(direction, symbol) {
+  if (robotStopped()) return;
   let sawOpenTradesInNewUi = false;
   const dealOpenedAt = Date.now();
-  const MIN_OPEN_MS = 3000;
+  const expiryMs = readExpiryMs();
 
   function onDealClosed() {
-    clearInterval(intervalId);
+    clearInterval(qbotDealTimer);
+    qbotDealTimer = null;
+    if (robotStopped()) return;
     console.log("Сделка закрыта.");
 
-    setTimeout(updateProfit, 500);
-
     setTimeout(async () => {
-      const sessionBalance =
-        parseInt(localStorage.getItem("sesionBalance"), 10) || 0;
-
-      let currentBalance = getCleanBalance();
-      if (currentBalance >= sessionBalance && sessionBalance > 0) {
-        await new Promise((r) => setTimeout(r, 2500));
-        currentBalance = getCleanBalance();
+      if (robotStopped()) return;
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const before = parseFloat(localStorage.getItem("sesionBalance")) || 0;
+      const previousHistory = localStorage.getItem(QBOT_HISTORY_BEFORE_KEY) || "";
+      const stake = Math.abs(Number(localStorage.getItem(QBOT_LAST_DEAL_AMOUNT_KEY)) || 0);
+      let after = await readFreshBalance();
+      let history = readLatestHistoryRow();
+      const waitStarted = Date.now();
+      while (Date.now() - waitStarted < 6000) {
+        const historyFresh = history && history.text !== previousHistory;
+        const balanceFresh = Number.isFinite(after) && Math.abs(after - before) >= 0.01;
+        if (historyFresh || balanceFresh) break;
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        after = await readFreshBalance();
+        history = readLatestHistoryRow();
       }
-
+      if (history && history.text === previousHistory) history = null;
+      const balanceDelta = Number.isFinite(after) && before > 0
+        ? Math.round((after - before) * 100) / 100
+        : NaN;
+      if (!history && !Number.isFinite(balanceDelta)) {
+        console.warn("[Q-bot] После сделки нет ни баланса шапки, ни новой строки истории.");
+        if (typeof window !== "undefined") window.__QBOT_DEAL_OPENING__ = false;
+        scheduleStart(1000);
+        return;
+      }
+      const settled = settleDeal(history, stake, balanceDelta);
+      const lost = settled.kind === "loss";
       const strategy = getTradingStrategy();
+      const total = Math.round(((Number(localStorage.getItem("qbot_session_profit")) || 0) + settled.delta) * 100) / 100;
+      if (Number.isFinite(after) && after > 0) localStorage.setItem("sesionBalance", String(after));
+      localStorage.setItem("qbot_session_profit", String(total));
+      await updateProfit();
       console.log(
-        "[Q-bot] Закрытие сделки: баланс",
-        currentBalance,
-        "на старт",
-        sessionBalance,
-        "стратегия",
-        strategy
+        "[Q-bot] Закрытие сделки: было",
+        before,
+        "стало",
+        after,
+        "история",
+        history ? history.text : "нет",
+        "ставка",
+        history && history.stake ? history.stake : stake,
+        "результат",
+        settled.delta,
+        settled.kind === "refund" ? "возврат" : lost ? "минус" : "плюс"
       );
 
-      if (currentBalance < sessionBalance) {
+      if (lost) {
         console.log("Сделка убыточная → мартингейл по стратегии:", strategy);
-        if (strategy === "AI") {
-          await martinAI(direction, symbol);
-        } else if (strategy === "MARTIN") {
-          await martinClassic(direction, symbol);
-        } else {
-          start();
-        }
+        if (strategy === "AI") await martinAI(direction, symbol);
+        else if (strategy === "MARTIN") await martinClassic(direction, symbol);
+        else scheduleStart(400);
+      } else if (settled.kind === "refund") {
+        console.log("Возврат суммы сделки, мартингейл не включается.");
+        scheduleStart(400);
       } else {
-        console.log("Сделка прибыльная или без изменения баланса.");
-        start();
+        console.log("Сделка прибыльная.");
+        scheduleStart(400);
       }
-    }, 1500);
+    }, 400);
   }
 
-  const intervalId = setInterval(() => {
+  if (qbotDealTimer) clearInterval(qbotDealTimer);
+  qbotDealTimer = setInterval(() => {
+    if (robotStopped()) {
+      clearInterval(qbotDealTimer);
+      qbotDealTimer = null;
+      return;
+    }
     const newCount = getOpenTradesCountNewUi();
     const plOpen =
       hasFloatingProfitLossOpenIndicator() &&
       isActivePairTabMatchingSymbol(symbol);
-    const isOpen =
-      (newCount !== null && newCount > 0) || plOpen;
+    const isOpen = (newCount !== null && newCount > 0) || plOpen;
 
     if (isOpen) sawOpenTradesInNewUi = true;
-
     if (sawOpenTradesInNewUi && !isOpen) {
       onDealClosed();
       return;
     }
+    if (newCount !== null || plOpen) return;
 
-    if (newCount !== null || plOpen) {
-      return;
-    }
-
-    if (!sawOpenTradesInNewUi) {
-      if (hasLegacyMoneyTabOpen()) return;
-      if (Date.now() - dealOpenedAt < MIN_OPEN_MS) return;
+    if (!sawOpenTradesInNewUi && Date.now() - dealOpenedAt >= expiryMs + 15000) {
       onDealClosed();
     }
   }, 1000);
 }
 
 // Мартингейл AI (с проверкой нового сигнала)
+async function runMartin(direction, symbol, coef) {
+  if (robotStopped()) return;
+  const amount = peekNextMartinAmount(coef);
+  if (amount == null) {
+    console.log("Достигнуто максимальное количество шагов мартингейла:", martinLimit());
+    scheduleStart(500);
+    return;
+  }
+  const state = readMartinState();
+  console.log(
+    "[Q-bot] Мартин шаг",
+    (state?.step || 0) + 1,
+    "из",
+    martinLimit(),
+    "| база",
+    state?.base,
+    "→ ставка",
+    amount
+  );
+
+  let way = direction;
+  if (coef === 2.5) {
+    const demo = QbotDom.isDemoAccount();
+    const url = demo
+      ? "https://ai-tradebot.com/newsignal/signal.php?para="
+      : "https://ai-tradingbot.pro/module/signalsTW/signals.php?martin=1&para=";
+    try {
+      const response = await fetch(url + encodeURIComponent(symbol));
+      const data = await response.json();
+      const next = normalizeSignalDirection(Array.isArray(data) ? data[0] : data);
+      if (next && next !== "none") way = next;
+    } catch (error) {
+      console.error("Ошибка при получении сигнала для мартин-АИ:", error);
+    }
+  }
+
+  openDeal(way, amount, symbol, 0, commitMartinStep);
+}
+
 async function martinAI(direction, symbol) {
-  const maxSteps =
-    parseInt(String(getQbotSettings()["martin-steps"] ?? 6), 10) || 6;
-  let currentStep = parseInt(localStorage.getItem("MartinSteps")) || 0;
-
-  if (currentStep >= maxSteps) {
-    console.log("Достигнуто максимальное количество шагов мартингейла.");
-    start();
-    return;
-  }
-
-  const cof = 2.5;
-  const amount = getAmountForNextMartin();
-  const newAmount = roundInvestmentAmount(amount * cof);
-  console.log(
-    "[Q-bot] Мартин AI: база",
-    amount,
-    "→ следующая ставка",
-    newAmount
-  );
-  // Проверяем демо или реал
-  let chekuid = QbotDom.isDemoAccount();
-  let Urls;
-  if (chekuid) {
-    Urls = "https://ai-tradebot.com/newsignal/signal.php?para=";
-    console.log("Demo account1");
-  } else {
-    Urls =
-      "https://ai-tradingbot.pro/module/signalsTW/signals.php?martin=1&para=";
-    console.log("Real account1");
-  }
-  // Проверяем актуальный сигнал // https://ai-tradingbot.pro/module/signalsTW/signals.php?martin=1&para=
-  try {
-    const response = await fetch(Urls + encodeURIComponent(symbol));
-    const data = await response.json();
-    const newDirection = Array.isArray(data) ? data[0] : data;
-
-    const finalDirection = newDirection === "none" ? direction : newDirection;
-    console.log(`Мартин AI: ${finalDirection}, сумма: ${newAmount}`);
-
-    localStorage.setItem("sesionBalance", getCleanBalance());
-    openDeal(finalDirection, newAmount, symbol);
-    localStorage.setItem("MartinSteps", (currentStep + 1).toString());
-  } catch (error) {
-    console.error("Ошибка при получении сигнала для мартин-АИ:", error);
-    openDeal(direction, newAmount, symbol);
-    localStorage.setItem("MartinSteps", (currentStep + 1).toString());
-  }
+  await runMartin(direction, symbol, 2.5);
 }
 
-// Классический мартингейл (без смены направления)
 async function martinClassic(direction, symbol) {
-  const maxSteps =
-    parseInt(String(getQbotSettings()["martin-step"] ?? 3), 10) || 3;
-  let currentStep = parseInt(localStorage.getItem("MartinSteps")) || 0;
-
-  if (currentStep >= maxSteps) {
-    console.log(
-      "Достигнуто максимальное количество шагов классического мартингейла."
-    );
-    start();
-    return;
-  }
-
-  const cof = 2.3;
-  const amount = getAmountForNextMartin();
-  const newAmount = roundInvestmentAmount(amount * cof);
-  console.log(
-    "[Q-bot] Мартин: база",
-    amount,
-    "→ следующая ставка",
-    newAmount
-  );
-
-  console.log(`Мартин Классик: ${direction}, сумма: ${newAmount}`);
-  localStorage.setItem("sesionBalance", getCleanBalance());
-  openDeal(direction, newAmount, symbol);
-  localStorage.setItem("MartinSteps", (currentStep + 1).toString());
+  await runMartin(direction, symbol, 2.3);
 }
+
+localStorage.setItem("statusbot", "notwork");

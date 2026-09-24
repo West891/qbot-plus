@@ -91,6 +91,21 @@
     }
   }
 
+  function parseBalanceText(text) {
+    let raw = String(text ?? "").replace(/\s/g, "");
+    raw = raw.replace(/[^\d,.-]/g, "");
+    if (!raw) return 0;
+    if (raw.includes(",") && raw.includes(".")) {
+      raw = raw.lastIndexOf(",") > raw.lastIndexOf(".")
+        ? raw.replace(/\./g, "").replace(",", ".")
+        : raw.replace(/,/g, "");
+    } else if (raw.includes(",")) {
+      raw = /,\d{1,2}$/.test(raw) ? raw.replace(",", ".") : raw.replace(/,/g, "");
+    }
+    const parsed = parseFloat(raw);
+    return Number.isFinite(parsed) ? Math.round(parsed * 100) / 100 : 0;
+  }
+
   function looksLikeBalance(text) {
     const t = String(text ?? "").trim();
     if (t.length < 2 || t.length > 28 || /^ID:/i.test(t)) return false;
@@ -206,15 +221,47 @@
     return container;
   }
 
+  // Настоящий клик мышью через Electron (isTrusted = true). В Chrome-расширении события нет — ничего не произойдёт.
+  function trustedClick(el) {
+    if (!el) return false;
+    const rect = el.getBoundingClientRect();
+    console.log(
+      "[Q-bot] Клик по меню аккаунта:",
+      el.tagName + "." + String(el.className && el.className.baseVal !== undefined ? el.className.baseVal : el.className),
+      Math.round(rect.left + rect.width / 2) + "," + Math.round(rect.top + rect.height / 2),
+      (el.textContent || "").replace(/\s+/g, " ").trim().slice(0, 40)
+    );
+    if (rect.width < 1 || rect.height < 1) return false;
+    // detail-объект между изолированными мирами не передаётся, поэтому строка.
+    document.dispatchEvent(
+      new CustomEvent("qbot-trusted-click", {
+        detail: JSON.stringify({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }),
+      })
+    );
+    return true;
+  }
+
   function simulateClick(el) {
     if (!el) return;
-    try {
-      el.click();
-    } catch (e) {
-      /* ignore */
+    const rect = el.getBoundingClientRect();
+    const opts = {
+      bubbles: true,
+      cancelable: true,
+      view: global,
+      clientX: rect.left + rect.width / 2,
+      clientY: rect.top + rect.height / 2,
+      button: 0,
+      buttons: 1,
+    };
+    // Сайт слушает pointer-события, обычного click() ему недостаточно.
+    for (const type of ["pointerover", "pointerenter", "pointerdown"]) {
+      el.dispatchEvent(new PointerEvent(type, { ...opts, pointerId: 1, pointerType: "mouse" }));
     }
-    const opts = { bubbles: true, cancelable: true, view: global };
     el.dispatchEvent(new MouseEvent("mousedown", opts));
+    opts.buttons = 0;
+    for (const type of ["pointerup", "pointerout"]) {
+      el.dispatchEvent(new PointerEvent(type, { ...opts, pointerId: 1, pointerType: "mouse" }));
+    }
     el.dispatchEvent(new MouseEvent("mouseup", opts));
     el.dispatchEvent(new MouseEvent("click", opts));
   }
@@ -244,15 +291,17 @@
   }
 
   function findBalance() {
+    const trigger = document.querySelector("qx-usermenu-trigger");
+    if (trigger && isVisible(trigger)) {
+      const fromShadow = trigger.querySelector?.("div.balance");
+      if (fromShadow && looksLikeBalance(fromShadow.textContent)) return fromShadow;
+    }
     for (const sel of selectorsFor("balance")) {
       const el = document.querySelector(sel);
       if (el && looksLikeBalance(el.textContent) && isVisible(el)) return el;
-      if (el && /\d/.test(el.textContent || "") && isVisible(el)) return el;
     }
-    for (const el of document.querySelectorAll("div, span")) {
-      if (!isVisible(el) || el.childElementCount > 0) continue;
-      if (!inZone(el, "headerRight") && !inZone(el, "sidebar")) continue;
-      if (looksLikeBalance(el.textContent)) return el;
+    for (const el of document.querySelectorAll("div.balance, span.balance")) {
+      if (isVisible(el) && looksLikeBalance(el.textContent)) return el;
     }
     return null;
   }
@@ -451,7 +500,41 @@
     return document.querySelector("div.qKWSR")?.parentElement || null;
   }
 
+  // Новый интерфейс Quotex: кликабельный блок аккаунта в шапке.
+  // <div class="root"><svg class="icon">…</svg><div class="text"><div class="name live">Live Account</div>…
+  // Блок профиля может жить в Shadow DOM микрофронтенда, поэтому обходим и shadowRoot.
+  function deepQueryAll(selector, root = document, out = []) {
+    for (const el of root.querySelectorAll(selector)) out.push(el);
+    for (const host of root.querySelectorAll("*")) {
+      if (host.shadowRoot) deepQueryAll(selector, host.shadowRoot, out);
+    }
+    return out;
+  }
+
+  function findAccountHeaderBlock() {
+    // Блок «Live Account» — веб-компонент с закрытым shadowRoot, внутрь не заглянуть; кликаем по самому хосту.
+    const trigger = document.querySelector("qx-usermenu-trigger");
+    if (trigger && isVisible(trigger)) return trigger;
+
+    for (const name of deepQueryAll("div.name")) {
+      const text = (name.textContent || "").replace(/\s+/g, " ").trim();
+      if (!/live\s*account|demo\s*account|реальный сч[её]т|демо[\s-]*сч[её]т/i.test(text)) continue;
+      const root = name.closest("div.root");
+      if (root && isVisible(root)) return root;
+    }
+
+    for (const caret of deepQueryAll("svg.caret")) {
+      const root = caret.closest("div.root");
+      if (!root || !isVisible(root)) continue;
+      if (root.querySelector("div.balance")) return root;
+    }
+    return null;
+  }
+
   function findUserMenu() {
+    const account = findAccountHeaderBlock();
+    if (account) return account;
+
     const legacy = document.querySelector(
       '[class*="Usermenu-styles-module__infoCaret"]:not([class*="Dropdown"])'
     );
@@ -480,7 +563,145 @@
     return strategySelectors(selectorsFor("userMenu"), (el) => isVisible(el));
   }
 
+  // Quotex кладёт профиль в inline-скрипт: window.settings = {..."id":"123456"...}.
+  // Сама переменная живёт в мире страницы и из изолированного мира недоступна, поэтому читаем текст скрипта.
+  let liveSettings = null;
+  let liveSettingsAt = 0;
+  let liveSettingsWait = null;
+
+  function requestLiveSettings() {
+    if (liveSettingsWait) return liveSettingsWait;
+    const id = "s" + Date.now() + Math.random().toString(16).slice(2);
+    liveSettingsWait = new Promise((resolve) => {
+      const done = (settings) => {
+        document.removeEventListener("qbot-page-settings-result", onResult);
+        liveSettingsWait = null;
+        if (settings && typeof settings === "object") {
+          liveSettings = settings;
+          liveSettingsAt = Date.now();
+        }
+        resolve(liveSettings);
+      };
+      const onResult = (event) => {
+        const detail = event.detail || {};
+        if (detail.id !== id) return;
+        done(detail.settings);
+      };
+      document.addEventListener("qbot-page-settings-result", onResult);
+      document.dispatchEvent(new CustomEvent("qbot-page-settings-request", { detail: { id } }));
+      setTimeout(() => done(liveSettings), 800);
+    });
+    return liveSettingsWait;
+  }
+
+  function readOpenHeaderBalance() {
+    const host = document.querySelector("qx-usermenu-trigger");
+    const root = host && host.shadowRoot;
+    const node = root && root.querySelector("div.balance");
+    if (!node) return null;
+    const value = parseBalanceText(node.textContent || "");
+    return Number.isFinite(value) && value > 0 ? value : null;
+  }
+
+  function requestPaintedHeaderBalance() {
+    return new Promise((resolve) => {
+      const id = "hb" + Date.now() + Math.random().toString(16).slice(2);
+      let settled = false;
+      const finish = (balance) => {
+        if (settled) return;
+        settled = true;
+        document.removeEventListener("qbot-header-balance-result", onResult);
+        const value = balance && Number(balance.value);
+        resolve(Number.isFinite(value) && value > 0 ? Math.round(value * 100) / 100 : null);
+      };
+      const onResult = (event) => {
+        let detail = event.detail;
+        if (typeof detail === "string") {
+          try { detail = JSON.parse(detail); } catch (e) { return; }
+        }
+        detail = detail || {};
+        if (detail.id !== id) return;
+        finish(detail.balance);
+      };
+      document.addEventListener("qbot-header-balance-result", onResult);
+      document.dispatchEvent(new CustomEvent("qbot-header-balance-request", {
+        detail: JSON.stringify({ id })
+      }));
+      setTimeout(() => finish(null), 1800);
+    });
+  }
+
+  async function readHeaderBalance() {
+    const open = readOpenHeaderBalance();
+    if (open != null) return open;
+    return requestPaintedHeaderBalance();
+  }
+
+  function readPageSettings() {
+    if (!liveSettingsWait) requestLiveSettings();
+    if (liveSettings) return liveSettings;
+    for (const script of document.querySelectorAll("script:not([src])")) {
+      const text = script.textContent || "";
+      const at = text.indexOf("window.settings");
+      if (at < 0) continue;
+      const start = text.indexOf("{", at);
+      if (start < 0) continue;
+      let depth = 0;
+      let inString = false;
+      let escaped = false;
+      for (let i = start; i < text.length; i++) {
+        const ch = text[i];
+        if (inString) {
+          if (escaped) escaped = false;
+          else if (ch === "\\") escaped = true;
+          else if (ch === '"') inString = false;
+          continue;
+        }
+        if (ch === '"') inString = true;
+        else if (ch === "{") depth++;
+        else if (ch === "}" && --depth === 0) {
+          try {
+            return JSON.parse(text.slice(start, i + 1));
+          } catch (e) {
+            return null;
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  function extractUserIdFromSettings() {
+    const settings = readPageSettings();
+    const id = settings && settings.id != null ? String(settings.id).trim() : "";
+    return /^\d{4,}$/.test(id) ? id : null;
+  }
+
+  function readSettingsBalance() {
+    const settings = readPageSettings();
+    if (!settings) return null;
+    const key = settings.isDemo || settings.isDemoProfile ? "demoBalance" : "liveBalance";
+    const raw = settings[key];
+    if (raw == null || raw === "") return null;
+    const text = String(raw).replace(/\s/g, "");
+    let normalized = text.replace(/[^\d,.-]/g, "");
+    if (normalized.includes(",") && normalized.includes(".")) {
+      normalized = normalized.lastIndexOf(",") > normalized.lastIndexOf(".")
+        ? normalized.replace(/\./g, "").replace(",", ".")
+        : normalized.replace(/,/g, "");
+    } else if (normalized.includes(",")) {
+      normalized = /,\d{1,2}$/.test(normalized)
+        ? normalized.replace(",", ".")
+        : normalized.replace(/,/g, "");
+    }
+    const n = parseFloat(normalized);
+    return Number.isFinite(n) ? Math.round(n * 100) / 100 : null;
+  }
+
   function extractUserIdFromPage() {
+    const fromSettings = extractUserIdFromSettings();
+    if (fromSettings) return fromSettings;
+
     const scopes = [
       document.querySelector('[class*="Usermenu"]'),
       document.querySelector("div.qKWSR")?.closest("div"),
@@ -525,6 +746,16 @@
       if (t.length > 60) continue;
       const id = parseUserId(t);
       if (id) return id;
+    }
+
+    // Запасной путь: строка «ID: 123456» где угодно на странице, включая Shadow DOM.
+    const match = document.body?.innerText?.match(/ID:\s*(\d{4,})/i);
+    if (match) return match[1];
+    for (const el of deepQueryAll("span, div, p, li")) {
+      const t = el.textContent?.trim() || "";
+      if (t.length > 60) continue;
+      const id = parseUserId(t);
+      if (id && isVisible(el)) return id;
     }
     return null;
   }
@@ -619,14 +850,19 @@
   }
 
   function findTradeDirectionButton(direction) {
-    const isUp = direction === "UP";
+    const isUp = String(direction || "").toUpperCase() === "UP";
+    const byCaption = Array.from(document.querySelectorAll("button")).find((btn) => {
+      const text = (btn.textContent || "").replace(/\s+/g, " ").trim();
+      if (!text || text.length > 24) return false;
+      return isUp ? /^(up|выше|higher|вверх)$/i.test(text) : /^(down|ниже|lower|вниз)$/i.test(text);
+    });
     const legacy = document.querySelector(isUp ? ".call-btn" : ".put-btn");
     if (legacy) return legacy;
 
     const root =
       document.getElementById("trade-button") ||
       document.querySelector("div#trade-button.VVihH");
-    if (!root) return null;
+    if (!root) return byCaption;
 
     if (isUp) {
       return (
@@ -635,7 +871,7 @@
         Array.from(root.querySelectorAll("button")).find((btn) =>
           /выше|higher|вверх|up\b/i.test((btn.textContent || "").trim())
         ) ||
-        root.querySelector("button")
+        byCaption
       );
     }
     return (
@@ -644,8 +880,7 @@
       Array.from(root.querySelectorAll("button")).find((btn) =>
         /ниже|lower|вниз|down\b/i.test((btn.textContent || "").trim())
       ) ||
-      root.querySelectorAll("button")[1] ||
-      null
+      byCaption
     );
   }
 
@@ -726,14 +961,31 @@
     }
   }
 
+  // Если встроенный поиск промахнулся, QbotHeal (main/dom-healer.js) пробует указанный пользователем элемент и автопоиск.
+  function healed(key, found) {
+    return global.QbotHeal ? global.QbotHeal.settle(key, found) : found;
+  }
+  const findBalanceHealed = () => {
+    const found = findBalance();
+    if (found) return healed("balance", found);
+    if (readSettingsBalance() != null) return healed("balance", document.querySelector("qx-usermenu-trigger") || document.body);
+    return healed("balance", null);
+  };
+  const findUserMenuHealed = () => healed("userMenu", findUserMenu());
+  const findTradeDirectionButtonHealed = (direction) =>
+    healed(
+      String(direction || "").toUpperCase() === "UP" ? "tradeUp" : "tradeDown",
+      findTradeDirectionButton(direction)
+    );
+
   const RESOLVERS = {
-    balance: findBalance,
+    balance: findBalanceHealed,
     slogan: findHeaderMountPoint,
-    userMenu: findUserMenu,
+    userMenu: findUserMenuHealed,
     openTradesCount: getOpenTradesCount,
     pairTabs: collectPairTabs,
-    tradeButtonUp: () => findTradeDirectionButton("UP"),
-    tradeButtonDown: () => findTradeDirectionButton("DOWN"),
+    tradeButtonUp: () => findTradeDirectionButtonHealed("UP"),
+    tradeButtonDown: () => findTradeDirectionButtonHealed("DOWN"),
   };
 
   function resolve(profileName) {
@@ -798,7 +1050,7 @@
 
   function waitForUserMenu(timeout = 12000) {
     return new Promise((resolve, reject) => {
-      const tryFind = () => findUserMenu() || document.querySelector("div.qKWSR");
+      const tryFind = () => findUserMenuHealed();
       const existing = tryFind();
       if (existing) return resolve(existing);
 
@@ -834,6 +1086,7 @@
     applyRemoteConfig,
     isVisible,
     looksLikeBalance,
+    parseBalanceText,
     isSloganText,
     isSafeSloganLeaf,
     isAccountHeaderBlock,
@@ -851,19 +1104,26 @@
     getOpenTradesCount,
     hasOpenTradesPreventingNewDeal,
     hasFloatingProfitLossOpenIndicator,
-    findTradeDirectionButton,
+    findTradeDirectionButton: findTradeDirectionButtonHealed,
     isDemoAccount,
-    findBalance,
+    findBalance: findBalanceHealed,
+    readSettingsBalance,
+    readOpenHeaderBalance,
+    readHeaderBalance,
+    raw: { findBalance, findUserMenu, findTradeDirectionButton },
     findSlogan,
     collectSloganElements,
     hideQuotexSlogan,
     removeQuotexSlogan,
     findHeaderMountPoint,
     findHeaderAnchor,
-    findUserMenu,
+    findUserMenu: findUserMenuHealed,
     pickClickable,
     simulateClick,
     closeAllPairTabs,
+    trustedClick,
+    readPageSettings,
+    refreshPageSettings: requestLiveSettings,
     SLOGAN_TEXT,
   };
 })(typeof window !== "undefined" ? window : globalThis);

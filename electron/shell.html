@@ -90,12 +90,14 @@
     #tb-reload.loading svg { animation: spin 0.9s linear infinite; }
     .omnibox {
       position: relative;
-      flex: 1;
+      flex: 1 1 auto;
+      min-width: 0;
       max-width: 860px;
-      margin: 0 auto 0 6px;
+      margin: 0 8px 0 6px;
       display: flex;
       align-items: center;
       height: 32px;
+      overflow: hidden;
       border-radius: 999px;
       background: rgba(255, 255, 255, 0.05);
       border: 1px solid transparent;
@@ -124,6 +126,9 @@
       min-width: 0;
       padding: 0 12px 0 4px;
       border: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
       background: transparent;
       color: #dfe5f3;
       font-size: 13px;
@@ -435,6 +440,8 @@
       opacity: 0;
       visibility: hidden;
       transition: transform 0.18s ease, opacity 0.18s ease, visibility 0.18s;
+      max-height: calc(100vh - 60px);
+      overflow-y: auto;
     }
     .menu.open { transform: none; opacity: 1; visibility: visible; }
     .menu-item {
@@ -471,6 +478,25 @@
     .update-install { width: 100%; height: 32px; margin-top: 8px; color: white; background: var(--grad); }
     .update-install[hidden] { display: none; }
     .menu-label { padding: 6px 10px 4px; color: var(--dim); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; }
+    .proxy-dot { width: 7px; height: 7px; margin-left: auto; border-radius: 50%; background: #334155; }
+    .proxy-on .proxy-dot { background: #22c55e; box-shadow: 0 0 8px #22c55e; }
+    .proxy-box { margin: 2px 4px 8px; padding: 8px; border-radius: 10px; background: rgba(255,255,255,0.03); border: 1px solid var(--line); }
+    .proxy-box[hidden] { display: none; }
+    .proxy-row { display: flex; gap: 6px; margin-bottom: 6px; }
+    .proxy-box select, .proxy-box input {
+      height: 30px; padding: 0 8px; border-radius: 8px; border: 1px solid var(--line);
+      color: #e2e8f0; background: rgba(0,0,0,0.3); font-size: 12px;
+    }
+    .proxy-box select { width: 92px; }
+    .proxy-box input { flex: 1; min-width: 0; }
+    .proxy-box input.port { flex: 0 0 64px; }
+    .proxy-box input::placeholder { color: #64748b; }
+    .proxy-actions { display: flex; gap: 6px; }
+    .proxy-actions button { flex: 1; height: 30px; border-radius: 8px; font-size: 12px; font-weight: 600; }
+    .proxy-apply { color: white; background: var(--grad); }
+    .proxy-off { color: #cbd5e1; background: rgba(255,255,255,0.06); }
+    .proxy-status { margin: 6px 2px 0; font-size: 11px; color: var(--dim); white-space: normal; }
+    .proxy-status.error { color: #fb7185; }
     .zoom-row { display: flex; align-items: center; gap: 4px; padding: 2px 4px 2px 10px; height: 38px; }
     .zoom-row > span { flex: 1; font-size: 12.5px; color: #d4dbea; }
     .zoom-row button { width: 30px; height: 28px; padding: 0; border-radius: 8px; color: #d4dbea; background: rgba(255,255,255,0.06); }
@@ -957,10 +983,46 @@
     .start:hover { box-shadow: 0 14px 38px rgba(59, 130, 246, 0.5), inset 0 1px 0 rgba(255,255,255,0.3); }
     .start:hover svg { animation: play-pop 0.45s ease; }
     .start.live {
-      background: linear-gradient(135deg, #059669, #10b981 50%, #34d399);
-      box-shadow: 0 10px 30px rgba(16, 185, 129, 0.35), inset 0 1px 0 rgba(255,255,255,0.25);
+      background: linear-gradient(135deg, #e11d48, #fb7185 55%, #be123c);
+      box-shadow: 0 10px 30px rgba(225, 29, 72, 0.38), inset 0 1px 0 rgba(255,255,255,0.25);
+      animation: none;
     }
-    .start.live svg { animation: play-pop 1.1s ease infinite; }
+    .start.live:hover { box-shadow: 0 14px 36px rgba(225, 29, 72, 0.5), inset 0 1px 0 rgba(255,255,255,0.3); }
+    .start.live svg { animation: none; }
+    .start.live:hover svg { animation: shake 0.4s ease; }
+
+    .support {
+      position: relative;
+      flex: 0 0 auto;
+      height: 30px;
+      margin-left: auto;
+      padding: 0 12px 0 10px;
+      overflow: hidden;
+      color: #fff;
+      font-size: 12.5px;
+      letter-spacing: 0.01em;
+      border-radius: 999px;
+      background: linear-gradient(110deg, #0284c7, #38bdf8 42%, #e0f2fe 50%, #38bdf8 58%, #0369a1);
+      background-size: 220% 100%;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      box-shadow: 0 4px 14px rgba(14, 165, 233, 0.4);
+      animation: support-flow 2.8s ease infinite, support-glow 2s ease-out infinite;
+    }
+    .support svg { width: 14px; height: 14px; animation: support-plane 1.8s ease-in-out infinite; }
+    .support::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -40%;
+      width: 34%;
+      height: 100%;
+      background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+      transform: skewX(-18deg);
+      animation: support-shine 2.6s ease-in-out infinite;
+      pointer-events: none;
+    }
+    .support:hover { transform: none; box-shadow: 0 6px 18px rgba(14, 165, 233, 0.55); }
+    .support:active { transform: scale(0.97); }
 
     .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
     .ghost {
@@ -970,13 +1032,179 @@
     }
     .ghost:hover { border-color: rgba(139, 92, 246, 0.55); background: rgba(139, 92, 246, 0.14); }
     .ghost:hover svg { animation: spark 0.6s ease; }
-    .stop {
-      color: #fecdd3;
-      background: rgba(251, 113, 133, 0.1);
-      border: 1px solid rgba(251, 113, 133, 0.22);
+    .signals {
+      color: #a5f3fc;
+      background: rgba(34, 211, 238, 0.1);
+      border: 1px solid rgba(34, 211, 238, 0.25);
     }
-    .stop:hover { background: rgba(251, 113, 133, 0.2); border-color: rgba(251, 113, 133, 0.45); }
-    .stop:hover svg { animation: shake 0.4s ease; }
+    .signals:hover { background: rgba(34, 211, 238, 0.2); border-color: rgba(34, 211, 238, 0.5); }
+    .signals:hover svg { animation: pulse 0.6s ease; }
+
+    .sig-panel {
+      position: absolute;
+      inset: 0;
+      z-index: 8;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 16px 14px 18px;
+      overflow: auto;
+      color: #e8eef8;
+      background: #0d1420;
+    }
+    .sig-panel[hidden] { display: none; }
+    .sig-head { display: flex; align-items: center; justify-content: space-between; }
+    .sig-head h2 { margin: 0; font-size: 22px; letter-spacing: -0.03em; }
+    .sig-tools { display: flex; gap: 6px; }
+    .sig-tools button {
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      color: #9aa6bd;
+      background: transparent;
+    }
+    .sig-tools button:hover { color: white; background: rgba(255,255,255,0.06); transform: none; }
+    .sig-tools svg { width: 18px; height: 18px; }
+    #sig-refresh.busy svg { animation: spin 0.8s linear infinite; }
+    .sig-tfs { display: flex; gap: 8px; }
+    .sig-tfs button {
+      height: 32px;
+      padding: 0 12px;
+      border-radius: 10px;
+      color: #c5cedd;
+      background: #1a2333;
+    }
+    .sig-tfs button.on { color: #04281c; background: #2ee6a6; }
+    .sig-label { margin: 4px 0 0; color: #8b97ad; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; }
+    .sig-card, .sig-row {
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      background: #141c2b;
+    }
+    .sig-card { padding: 14px; }
+    .sig-top, .sig-row { display: flex; align-items: center; gap: 10px; }
+    .sig-row { padding: 10px 12px; }
+    .sig-list { display: grid; gap: 8px; }
+    .sig-flags { position: relative; width: 46px; height: 32px; flex: 0 0 auto; }
+    .sig-flags .sig-flag {
+      position: absolute;
+      top: 0;
+      width: 30px;
+      height: 30px;
+      display: block;
+      border-radius: 50%;
+      background: #101826;
+      border: 2px solid #141c2b;
+      overflow: hidden;
+    }
+    .sig-flags .sig-flag use { width: 30px; height: 30px; }
+    .sig-flags .sig-flag:first-child { left: 0; z-index: 1; }
+    .sig-flags .sig-flag:last-child { left: 16px; }
+    .sig-meta { min-width: 0; }
+    .sig-meta b, .sig-side b { display: block; font-size: 15px; }
+    .sig-meta small, .sig-side small { color: #93a0b8; font-size: 12px; }
+    .sig-side { margin-left: auto; text-align: right; }
+    .sig-side .up { color: #2ee6a6; }
+    .sig-side .down { color: #ff6d86; }
+    .sig-name { display: flex; align-items: center; gap: 8px; }
+    .sig-live {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      height: 20px;
+      padding: 0 8px;
+      border-radius: 99px;
+      color: #2ee6a6;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      border: 1px solid rgba(46, 230, 166, 0.45);
+      background: rgba(46, 230, 166, 0.1);
+    }
+    .sig-live i { width: 6px; height: 6px; border-radius: 50%; background: #2ee6a6; }
+    .sig-price-row { display: flex; align-items: baseline; justify-content: space-between; margin-top: 10px; }
+    .sig-price-row b { font-size: 14px; font-weight: 600; }
+    .sig-chart { display: block; width: 100%; height: 78px; margin-top: 6px; }
+    .sig-wait { margin-top: 10px; }
+    .sig-wait-meta { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6px; }
+    .sig-wait-meta span { color: #93a0b8; font-size: 11px; letter-spacing: 0.04em; }
+    .sig-left { color: #e8eef8; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .sig-card .sig-bar {
+      display: block;
+      width: 100%;
+      height: 7px;
+      position: relative;
+      overflow: hidden;
+      border-radius: 99px;
+      background: #1c2638;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+    }
+    .sig-bar i {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #0f9f62, #2ee6a6 55%, #d9ffe9);
+      box-shadow: 0 0 16px rgba(46, 230, 166, 0.75);
+      position: relative;
+      overflow: hidden;
+      transition: width 0.2s linear;
+    }
+    .sig-bar i::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -35%;
+      width: 35%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.85), transparent);
+      animation: sig-glide 1.15s linear infinite;
+    }
+    .sig-bar.down i { background: linear-gradient(90deg, #e11d48, #ff6d86 55%, #ffe4ea); box-shadow: 0 0 16px rgba(255, 109, 134, 0.75); }
+    .sig-open {
+      width: 100%;
+      height: 44px;
+      margin-top: 12px;
+      color: #04281c;
+      background: #2ee6a6;
+    }
+    .sig-open.down { color: #fff; background: #ff6d86; }
+    .sig-open:disabled { opacity: 0.45; }
+    .sig-note { color: #93a0b8; font-size: 13px; }
+    .sig-sk { animation: sig-rise 0.35s ease; }
+    .sig-bone {
+      display: block;
+      border-radius: 8px;
+      background: linear-gradient(100deg, #1a2333 30%, #314056 48%, #1a2333 66%);
+      background-size: 220% 100%;
+      animation: sig-shimmer 1.25s ease-in-out infinite;
+    }
+    .sig-bone.flag { width: 46px; height: 32px; border-radius: 16px; flex: 0 0 auto; }
+    .sig-bone.name { width: 88px; height: 14px; }
+    .sig-bone.pill { width: 46px; height: 18px; border-radius: 99px; }
+    .sig-bone.side { width: 52px; height: 14px; margin-left: auto; }
+    .sig-bone.price { width: 72px; height: 14px; }
+    .sig-bone.sub { width: 64px; height: 10px; margin-top: 6px; }
+    .sig-bone.chart {
+      width: 100%;
+      height: 78px;
+      margin-top: 12px;
+      border-radius: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+    .sig-bone.chart::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: linear-gradient(#2ee6a6, transparent);
+      box-shadow: 0 0 12px #2ee6a6;
+      animation: sig-scan 1.4s ease-in-out infinite;
+    }
+    .sig-bone.bar { width: 100%; height: 7px; margin-top: 12px; border-radius: 99px; }
+    .sig-bone.btn { width: 100%; height: 44px; margin-top: 12px; border-radius: 12px; }
+    .sig-row.sig-sk .sig-bone.side { margin-top: 0; }
 
     .links { display: flex; gap: 8px; margin-top: 8px; }
     .links button {
@@ -1015,6 +1243,195 @@
     .icon-btn svg { width: 18px; height: 18px; }
     .icon-btn:hover { color: var(--text); border-color: var(--line-strong); }
     #settings-btn:hover svg { transform: rotate(90deg); transition: transform 0.5s ease; }
+
+    .gate {
+      position: absolute;
+      top: 74px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 15;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background:
+        radial-gradient(360px 260px at 50% 30%, rgba(79, 70, 229, 0.22), transparent 70%),
+        linear-gradient(180deg, rgba(10, 15, 28, 0.97), rgba(5, 7, 13, 0.99));
+      backdrop-filter: blur(10px);
+      transition: opacity 0.6s ease, visibility 0.6s, transform 0.6s ease;
+    }
+    .gate.hide { opacity: 0; visibility: hidden; transform: translateY(12px); pointer-events: none; }
+    .gate-body {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      animation: rise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    }
+    .gate-orb {
+      position: relative;
+      width: 132px;
+      height: 132px;
+      display: grid;
+      place-items: center;
+    }
+    .gate-ring {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: conic-gradient(from 0deg, transparent 0 60%, #6366f1 75%, #22d3ee 92%, transparent);
+      -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+      mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+      filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.6));
+      animation: spin 1.6s linear infinite;
+    }
+    .gate-ring-2 {
+      inset: 12px;
+      background: conic-gradient(from 90deg, transparent 0 65%, #a78bfa 85%, transparent);
+      animation-duration: 2.6s;
+      animation-direction: reverse;
+      opacity: 0.8;
+    }
+    .gate-pulse {
+      position: absolute;
+      inset: 26px;
+      border-radius: 50%;
+      border: 1px solid rgba(34, 211, 238, 0.45);
+      animation: wave 2.4s ease-out infinite;
+    }
+    .gate-pulse + .gate-pulse { animation-delay: 1.2s; }
+    .gate-icon {
+      position: relative;
+      width: 70px;
+      height: 70px;
+      border-radius: 22px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      color: white;
+      background: var(--grad);
+      box-shadow: 0 14px 40px rgba(59, 130, 246, 0.5), inset 0 1px 0 rgba(255,255,255,0.35);
+      transition: background 0.4s ease, box-shadow 0.4s ease;
+    }
+    .gate-scan {
+      position: absolute;
+      left: 34px;
+      right: 34px;
+      top: 32px;
+      height: 2px;
+      z-index: 2;
+      border-radius: 2px;
+      background: linear-gradient(90deg, transparent, #a5f3fc, transparent);
+      box-shadow: 0 0 12px #22d3ee;
+      opacity: 0;
+    }
+    .gi {
+      position: absolute;
+      width: 32px;
+      height: 32px;
+      opacity: 0;
+      transform: scale(0.6) rotate(-12deg);
+      transition: opacity 0.35s ease, transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .gate[data-stage="login"] .gi-login,
+    .gate[data-stage="id"] .gi-id,
+    .gate[data-stage="access"] .gi-access,
+    .gate[data-stage="error"] .gi-error,
+    .gate[data-stage="ready"] .gi-ready { opacity: 1; transform: none; }
+    .gate[data-stage="login"] .gi-login { animation: gate-knock 2.4s ease-in-out infinite; }
+    .gate[data-stage="id"] .gate-scan,
+    .gate[data-stage="access"] .gate-scan { opacity: 1; animation: gate-scan 1.4s ease-in-out infinite; }
+    .gate[data-stage="access"] .gi-access { animation: breathe 1.6s ease-in-out infinite; }
+    .gate[data-stage="error"] .gate-icon { background: linear-gradient(135deg, #e11d48, #fb7185); box-shadow: 0 14px 40px rgba(225, 29, 72, 0.45); }
+    .gate[data-stage="error"] .gate-ring { animation-duration: 4s; filter: hue-rotate(140deg); }
+    .gate[data-stage="ready"] .gate-ring, .gate[data-stage="ready"] .gate-ring-2 { animation: none; opacity: 0; transition: opacity 0.4s ease; }
+    .gate[data-stage="ready"] .gate-icon { animation: logo-pop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    .gate[data-stage="ready"].vip .gate-icon {
+      background: linear-gradient(135deg, #fde68a, #f59e0b 60%, #d97706);
+      box-shadow: 0 14px 44px rgba(245, 158, 11, 0.55), inset 0 1px 0 rgba(255,255,255,0.5);
+    }
+    .gi-ready {
+      width: auto;
+      height: auto;
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+    }
+    .gate.vip .gi-ready { color: #3b2300; }
+    .gate-title { margin: 18px 0 6px; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+    .gate-text { margin: 0; max-width: 300px; color: var(--muted); font-size: 12.5px; line-height: 1.5; min-height: 38px; }
+    .gate-id {
+      margin-top: 10px;
+      padding: 5px 12px;
+      border-radius: 999px;
+      font: 600 12px/1.4 ui-monospace, "Cascadia Mono", Consolas, monospace;
+      letter-spacing: 0.04em;
+      color: #a5f3fc;
+      background: rgba(34, 211, 238, 0.1);
+      border: 1px solid rgba(34, 211, 238, 0.35);
+      animation: logo-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .gate.vip .gate-id { color: #fde68a; background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.45); }
+    .gate-text:empty { display: none; }
+    .gate-steps {
+      list-style: none;
+      width: 100%;
+      max-width: 300px;
+      margin: 18px 0 0;
+      padding: 0;
+      display: grid;
+      gap: 8px;
+      text-align: left;
+    }
+    .gate-steps li {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      color: var(--dim);
+      font-size: 12.5px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--line);
+      transition: color 0.3s ease, border-color 0.3s ease, background 0.3s ease;
+    }
+    .gate-steps i {
+      width: 18px;
+      height: 18px;
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      border: 1.5px solid currentColor;
+      transition: all 0.3s ease;
+    }
+    .gate-steps i svg { width: 11px; height: 11px; stroke-width: 3; opacity: 0; }
+    .gate-steps li.active { color: #e0e7ff; border-color: rgba(99, 102, 241, 0.5); background: rgba(99, 102, 241, 0.1); }
+    .gate-steps li.active i { border-color: #818cf8; border-top-color: transparent; animation: spin 0.8s linear infinite; }
+    .gate-steps li.done { color: var(--green); }
+    .gate-steps li.done i { background: var(--green); border-color: var(--green); color: #052e1c; animation: none; }
+    .gate-steps li.done i svg { opacity: 1; }
+    .gate-skeleton { width: 100%; max-width: 300px; margin-top: 20px; display: grid; gap: 8px; opacity: 0.55; }
+    .gate-skeleton i {
+      height: 10px;
+      border-radius: 6px;
+      background: linear-gradient(90deg, rgba(255,255,255,0.04) 20%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.04) 80%);
+      background-size: 250% 100%;
+      animation: shimmer 1.6s linear infinite;
+    }
+    .gate-skeleton i.short { width: 60%; }
+    @keyframes gate-scan {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(66px); }
+    }
+    @keyframes gate-knock {
+      0%, 70%, 100% { transform: none; }
+      75% { transform: rotate(-10deg); }
+      80% { transform: rotate(8deg); }
+      85% { transform: rotate(-6deg); }
+      90% { transform: rotate(0); }
+    }
 
     .settings-panel {
       position: absolute;
@@ -1085,6 +1502,54 @@
     .lang-option.active .tick { opacity: 1; transform: none; }
     .settings-note { margin: 12px 2px 0; color: var(--dim); font-size: 11px; line-height: 1.5; }
 
+    .dom-check { width: 100%; height: 36px; color: var(--text); background: var(--glass-strong); border: 1px solid var(--line); }
+    .dom-check:hover { border-color: var(--line-strong); }
+    .dom-check.busy svg { animation: spin 0.8s linear infinite; }
+    .dom-list { display: grid; gap: 6px; margin-top: 10px; }
+    .dom-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--line);
+      animation: rise 0.3s ease both;
+    }
+    .dom-row .dot { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%; background: #475569; }
+    .dom-row[data-state="ok"] .dot, .dom-row[data-state="picked"] .dot, .dom-row[data-state="auto"] .dot { background: var(--green); box-shadow: 0 0 8px var(--green); }
+    .dom-row[data-state="pending"] .dot { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; animation: breathe 1.2s ease-in-out infinite; }
+    .dom-row[data-state="missing"] .dot { background: #fb7185; box-shadow: 0 0 8px #fb7185; }
+    .dom-row .meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+    .dom-row .acts { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
+    .dom-row .meta b { font-size: 12.5px; font-weight: 600; }
+    .dom-row .meta small { font-size: 10.5px; color: var(--dim); }
+    .dom-row button, .dom-alert-actions button {
+      height: 26px;
+      padding: 0 9px;
+      border-radius: 7px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--line);
+    }
+    .dom-row button:hover, .dom-alert-actions button:hover { transform: none; border-color: var(--line-strong); }
+    .dom-row button.primary, .dom-alert-actions button.primary { color: white; background: var(--grad); border-color: transparent; }
+    .dom-alert {
+      margin-bottom: 8px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      animation: rise 0.3s ease both;
+    }
+    .dom-alert[hidden] { display: none; }
+    .dom-alert.missing { background: rgba(251, 113, 133, 0.1); border-color: rgba(251, 113, 133, 0.35); }
+    .dom-alert.picking { background: rgba(34, 211, 238, 0.1); border-color: rgba(34, 211, 238, 0.4); }
+    .dom-alert p { margin: 0 0 8px; font-size: 12px; line-height: 1.45; }
+    .dom-alert-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
     .reveal { animation: rise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
     .reveal:nth-child(2) { animation-delay: 0.05s; }
     .reveal:nth-child(3) { animation-delay: 0.1s; }
@@ -1128,6 +1593,41 @@
     @keyframes pulse {
       0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.6); }
       100% { box-shadow: 0 0 0 8px rgba(52, 211, 153, 0); }
+    }
+    @keyframes support-flow {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    @keyframes support-glow {
+      0% { box-shadow: 0 4px 14px rgba(14, 165, 233, 0.4), 0 0 0 0 rgba(56, 189, 248, 0.45); }
+      70% { box-shadow: 0 4px 14px rgba(14, 165, 233, 0.4), 0 0 0 6px rgba(56, 189, 248, 0); }
+      100% { box-shadow: 0 4px 14px rgba(14, 165, 233, 0.4), 0 0 0 0 rgba(56, 189, 248, 0); }
+    }
+    @keyframes support-plane {
+      0%, 100% { transform: translate(0, 0); }
+      50% { transform: translate(3px, -2px); }
+    }
+    @keyframes support-shine {
+      0% { left: -40%; }
+      55%, 100% { left: 130%; }
+    }
+    @keyframes sig-glide {
+      0% { left: -30%; }
+      100% { left: 110%; }
+    }
+    @keyframes sig-shimmer {
+      0% { background-position: 100% 0; }
+      100% { background-position: -100% 0; }
+    }
+    @keyframes sig-scan {
+      0% { left: 0; opacity: 0; }
+      15% { opacity: 1; }
+      85% { opacity: 1; }
+      100% { left: 100%; opacity: 0; }
+    }
+    @keyframes sig-rise {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: none; }
     }
     @keyframes shift {
       0%, 100% { background-position: 0% 50%; }
@@ -1175,6 +1675,7 @@
       <input id="url" value="https://youlink.biz/3S2M" spellcheck="false" autocomplete="off" aria-label="URL">
       <button class="go-inline" type="submit" data-i18n-title="open" title="Открыть"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
     </form>
+    <button id="support" class="support" type="button"><svg viewBox="0 0 24 24"><path d="M22 2 11 13"/><path d="m22 2-7 20-4-9-9-4z"/></svg><span data-i18n="support">Поддержка</span></button>
     <button id="tb-menu" class="tb-btn" type="button" data-i18n-title="nav_menu" title="Меню">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="19" r="1.4" fill="currentColor"/></svg>
     </button>
@@ -1199,6 +1700,28 @@
     <button class="menu-item" type="button" data-action="open:quotex.com"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/></svg><span>quotex.com</span></button>
     <button class="menu-item" type="button" data-action="open:market-qx.pro"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/></svg><span>market-qx.pro</span></button>
     <div class="menu-sep"></div>
+    <button id="proxy-toggle" class="menu-item" type="button"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg><span data-i18n="proxy_menu">Прокси</span><i class="proxy-dot"></i></button>
+    <div id="proxy-box" class="proxy-box" hidden>
+      <div class="proxy-row">
+        <select id="proxy-scheme" aria-label="scheme">
+          <option value="http">HTTP</option>
+          <option value="https">HTTPS</option>
+          <option value="socks5">SOCKS5</option>
+          <option value="socks4">SOCKS4</option>
+        </select>
+        <input id="proxy-host" placeholder="1.2.3.4" spellcheck="false" autocomplete="off">
+        <input id="proxy-port" class="port" inputmode="numeric" placeholder="8080" maxlength="5">
+      </div>
+      <div class="proxy-row">
+        <input id="proxy-user" data-i18n-placeholder="proxy_user" placeholder="Логин" spellcheck="false" autocomplete="off">
+        <input id="proxy-pass" type="password" data-i18n-placeholder="proxy_pass" placeholder="Пароль" autocomplete="new-password">
+      </div>
+      <div class="proxy-actions">
+        <button id="proxy-apply" class="proxy-apply" type="button" data-i18n="proxy_apply">Применить</button>
+        <button id="proxy-off" class="proxy-off" type="button" data-i18n="proxy_off">Выключить</button>
+      </div>
+      <p id="proxy-status" class="proxy-status"></p>
+    </div>
     <div class="menu-sep"></div>
     <button id="update-check" class="menu-item" type="button"><svg class="icon" viewBox="0 0 24 24"><path d="M12 3v12M8 11l4 4 4-4M5 21h14"/></svg><span data-i18n="update_check">Проверить обновления</span></button>
     <div id="update-box" class="update-box" hidden>
@@ -1293,6 +1816,46 @@
           </div>
           <p class="settings-note" data-i18n="lang_note">Язык применяется сразу и сохраняется для следующих запусков.</p>
         </section>
+
+        <section class="card">
+          <p class="card-title"><svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5M8.5 11h5M11 8.5v5"/></svg><span data-i18n="dom_title">Элементы страницы</span></p>
+          <button id="dom-check" class="dom-check" type="button"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg><span data-i18n="dom_check">Проверить элементы</span></button>
+          <div id="dom-list" class="dom-list"></div>
+          <p class="settings-note" data-i18n="dom_note">Если бот не находит кнопку или поле, нажмите «Указать» и кликните по нему на странице слева — бот запомнит элемент.</p>
+        </section>
+      </div>
+    </div>
+
+    <div id="gate" class="gate" data-stage="login">
+      <div class="gate-body">
+        <div class="gate-orb">
+          <span class="gate-ring"></span>
+          <span class="gate-ring gate-ring-2"></span>
+          <span class="gate-scan"></span>
+          <span class="gate-pulse"></span>
+          <span class="gate-pulse"></span>
+          <div class="gate-icon">
+            <svg class="icon gi gi-login" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.5" r="1.2" fill="currentColor" stroke="none"/></svg>
+            <svg class="icon gi gi-id" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="9" cy="11" r="2"/><path d="M6 16c.6-1.5 1.7-2.2 3-2.2s2.4.7 3 2.2M14.5 10h4M14.5 13.5h3"/></svg>
+            <svg class="icon gi gi-access" viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 5-3.2 8.4-7 10-3.8-1.6-7-5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
+            <svg class="icon gi gi-error" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.5"/></svg>
+            <span class="gi gi-ready" id="gate-badge">FREE</span>
+          </div>
+        </div>
+
+        <h3 id="gate-title" class="gate-title"></h3>
+        <p id="gate-text" class="gate-text"></p>
+        <span id="gate-id" class="gate-id" hidden></span>
+
+        <ol class="gate-steps">
+          <li data-gate-step="login"><i><svg class="icon" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></i><span data-i18n="gate_step_login">Вход на сайт</span></li>
+          <li data-gate-step="id"><i><svg class="icon" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></i><span data-i18n="gate_step_id">Получение ID</span></li>
+          <li data-gate-step="access"><i><svg class="icon" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></i><span data-i18n="gate_step_access">Проверка VIP / Free</span></li>
+        </ol>
+
+        <div class="gate-skeleton" aria-hidden="true">
+          <i></i><i></i><i class="short"></i>
+        </div>
       </div>
     </div>
 
@@ -1375,10 +1938,14 @@
     </div>
 
     <footer>
+      <div id="dom-alert" class="dom-alert" hidden>
+        <p id="dom-alert-text"></p>
+        <div class="dom-alert-actions" id="dom-alert-actions"></div>
+      </div>
       <button id="start" class="start" type="button"><svg viewBox="0 0 24 24"><path d="m8 5 11 7-11 7z"/></svg><span>Запустить робота</span></button>
       <div class="actions">
         <button id="ai" class="ghost" type="button"><svg viewBox="0 0 24 24"><path d="M12 3 9.5 9.5 3 12l6.5 2.5L12 21l2.5-6.5L21 12l-6.5-2.5z"/></svg><span data-i18n="ai">AI-анализ</span></button>
-        <button id="stop" class="stop" type="button"><svg viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="1.5"/></svg><span data-i18n="stop">Стоп</span></button>
+        <button id="signals" class="signals" type="button"><svg viewBox="0 0 24 24"><path d="M3 17l5-6 4 4 6-8M14 7h6v6"/></svg><span data-i18n="signals">Сигналы</span></button>
       </div>
       <div class="links">
         <button id="lessons" type="button"><svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3"/></svg><span data-i18n="lessons">Инструкция</span></button>
@@ -1386,6 +1953,26 @@
       </div>
       <div id="error" class="error"></div>
     </footer>
+    <section id="signals-panel" class="sig-panel" hidden>
+      <div class="sig-head">
+        <h2 data-i18n="signals">Сигналы</h2>
+        <div class="sig-tools">
+          <button id="sig-close" type="button" title="Закрыть"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+          <button id="sig-refresh" type="button" title="Обновить"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg></button>
+        </div>
+      </div>
+      <div class="sig-tfs" id="sig-tfs">
+        <button type="button" data-tf="1M" class="on">1M</button>
+        <button type="button" data-tf="5M">5M</button>
+        <button type="button" data-tf="15M">15M</button>
+        <button type="button" data-tf="30M">30M</button>
+        <button type="button" data-tf="1H">1H</button>
+      </div>
+      <p class="sig-label" data-i18n="sig_active">АКТИВНЫЙ</p>
+      <div id="sig-active"></div>
+      <p class="sig-label" data-i18n="sig_recent">ПОСЛЕДНИЕ 10 СИГНАЛОВ</p>
+      <div id="sig-list" class="sig-list"></div>
+    </section>
   </aside>
   <script>
     const $ = (id) => document.getElementById(id);
@@ -1398,6 +1985,15 @@
     let hasLog = false;
     let startKey = "start";
     let updateInfo = { state: "idle" };
+    let proxyInfo = null;
+    let gateInfo = { stage: "login", id: null, vip: null };
+    let gateDone = false;
+    let gateLoginSince = 0;
+    let gateHideTimer = null;
+    let domItems = null;
+    let domSummary = null;
+    let domAlertSig = "";
+    const DOM_KEYS = ["balance", "userMenu", "assetAdd", "investInput", "tradeUp", "tradeDown"];
 
     const LANG_KEY = "qbot_ui_lang";
     const LANG_NAMES = { ru: "Русский", en: "English", pt: "Português" };
@@ -1416,13 +2012,24 @@
         otc: "OTC-пары", otc_d: "Торговля внебиржевыми активами",
         trailing: "Trailing Stop", trailing_d: "Подтягивать стоп за прибылью",
         reinvest: "Реинвест прибыли", reinvest_d: "Увеличивать ставку из прибыли",
-        start: "Запустить робота", starting: "Запуск...", started: "Робот запущен",
-        ai: "AI-анализ", stop: "Стоп", lessons: "Инструкция",
+        start: "Запустить робота", starting: "Запуск...", halt: "Остановить робота",
+        ai: "AI-анализ", signals: "Сигналы", lessons: "Инструкция", support: "Поддержка",
+        sig_active: "АКТИВНЫЙ", sig_recent: "ПОСЛЕДНИЕ 10 СИГНАЛОВ", sig_up: "ВВЕРХ", sig_down: "ВНИЗ",
+        sig_open: "Открыть", sig_strength: "Сила", sig_empty: "Сигналов сейчас нет", sig_error: "Не удалось загрузить сигналы", sig_ago: "{n} мин назад", sig_now: "только что", sig_sec: "с", sig_until: "До обновления",
         buy_vip: "Купить VIP", vip_active: "VIP активен",
         nav_back: "Назад", nav_forward: "Вперёд", nav_reload: "Обновить", nav_home: "Главная Quotex",
         nav_menu: "Меню", nav_hard_reload: "Перезагрузить без кэша", nav_zoom: "Масштаб",
         nav_fullscreen: "Полный экран", nav_devtools: "Инструменты разработчика",
         nav_domains: "Зеркала брокера", nav_quit: "Выход",
+        proxy_menu: "Прокси", proxy_user: "Логин", proxy_pass: "Пароль",
+        proxy_apply: "Применить", proxy_off: "Выключить", proxy_bad: "Укажите адрес и порт",
+        proxy_on: "Прокси включён", proxy_disabled: "Прокси выключен",
+        gate_step_login: "Вход на сайт", gate_step_id: "Получение ID", gate_step_access: "Проверка VIP / Free",
+        gate_login_title: "Войдите в аккаунт", gate_login_text: "Авторизуйтесь на сайте брокера слева — робот сам определит ваш аккаунт.",
+        gate_id_title: "Определяем ваш ID", gate_id_text: "Считываем номер аккаунта из профиля брокера…",
+        gate_access_title: "Проверяем доступ", gate_access_text: "Сверяем ID с сервером Q-bot, чтобы включить VIP или Free.",
+        gate_error_title: "ID не найден", gate_error_text: "Обновите страницу брокера (F5) — робот попробует снова.",
+        gate_ready_vip: "VIP доступ активен", gate_ready_free: "Бесплатный доступ", gate_ready_text: "Аккаунт ID {id}",
         update_check: "Проверить обновления", update_checking: "Проверяем обновления…",
         update_current: "Установлена последняя версия {version}",
         update_available: "Найдена версия {version}. Скачиваем…",
@@ -1433,7 +2040,19 @@
         update_error: "Не удалось проверить обновление",
         splash_connect: "Подключение к платформе…", splash_page: "Загрузка торгового терминала…",
         splash_robot: "Запуск робота…", splash_ready: "Всё готово", splash_error: "Не удалось загрузить страницу",
-        splash_retry: "Повторить", step_platform: "Платформа", step_page: "Терминал", step_robot: "Робот"
+        splash_retry: "Повторить", step_platform: "Платформа", step_page: "Терминал", step_robot: "Робот",
+        dom_title: "Элементы страницы", dom_check: "Проверить элементы",
+        dom_note: "Если бот не находит кнопку или поле, нажмите «Указать» и кликните по нему на странице слева — бот запомнит элемент.",
+        dom_el_balance: "Баланс", dom_el_userMenu: "Меню аккаунта", dom_el_assetAdd: "Кнопка «+» добавления пары",
+        dom_el_investInput: "Поле суммы сделки", dom_el_tradeUp: "Кнопка «Вверх»", dom_el_tradeDown: "Кнопка «Вниз»",
+        dom_state_ok: "Найден ботом", dom_state_auto: "Найден автопоиском", dom_state_picked: "Указан вами",
+        dom_state_pending: "Нужно подтверждение", dom_state_missing: "Не найден",
+        dom_pick: "Указать", dom_show: "Показать", dom_reset: "Сбросить", dom_yes: "Да, верно", dom_no: "Нет",
+        dom_cancel: "Отмена", dom_not_ready: "Сначала дождитесь загрузки робота.",
+        dom_alert_missing: "Бот не нашёл: {name}. Укажите его на странице.",
+        dom_alert_pending: "Автопоиск нашёл «{name}». Нажмите «Показать» и подтвердите — без этого бот не будет торговать этим элементом.",
+        dom_alert_picking: "Кликните по элементу «{name}» на странице слева. Esc — отмена.",
+        dom_pick_hint: "Кликните по элементу · Esc — отмена"
       },
       en: {
         brand: "Trading robot", free: "Free access", vip_access: "VIP access",
@@ -1449,13 +2068,24 @@
         otc: "OTC pairs", otc_d: "Trade over-the-counter assets",
         trailing: "Trailing Stop", trailing_d: "Move the stop along with profit",
         reinvest: "Reinvest profit", reinvest_d: "Increase the stake from profit",
-        start: "Start robot", starting: "Starting...", started: "Robot running",
-        ai: "AI analysis", stop: "Stop", lessons: "Guide",
+        start: "Start robot", starting: "Starting...", halt: "Stop robot",
+        ai: "AI analysis", signals: "Signals", lessons: "Guide", support: "Support",
+        sig_active: "ACTIVE", sig_recent: "LAST 10 SIGNALS", sig_up: "UP", sig_down: "DOWN",
+        sig_open: "Open", sig_strength: "Strength", sig_empty: "No signals right now", sig_error: "Could not load signals", sig_ago: "{n} min ago", sig_now: "just now", sig_sec: "s", sig_until: "Until refresh",
         buy_vip: "Get VIP", vip_active: "VIP active",
         nav_back: "Back", nav_forward: "Forward", nav_reload: "Reload", nav_home: "Quotex home",
         nav_menu: "Menu", nav_hard_reload: "Hard reload", nav_zoom: "Zoom",
         nav_fullscreen: "Full screen", nav_devtools: "Developer tools",
         nav_domains: "Broker mirrors", nav_quit: "Exit",
+        proxy_menu: "Proxy", proxy_user: "Username", proxy_pass: "Password",
+        proxy_apply: "Apply", proxy_off: "Turn off", proxy_bad: "Enter host and port",
+        proxy_on: "Proxy enabled", proxy_disabled: "Proxy disabled",
+        gate_step_login: "Sign in", gate_step_id: "Getting ID", gate_step_access: "Checking VIP / Free",
+        gate_login_title: "Sign in to your account", gate_login_text: "Log in on the broker site on the left — the robot will detect your account.",
+        gate_id_title: "Detecting your ID", gate_id_text: "Reading the account number from the broker profile…",
+        gate_access_title: "Checking access", gate_access_text: "Matching your ID with the Q-bot server to enable VIP or Free.",
+        gate_error_title: "ID not found", gate_error_text: "Reload the broker page (F5) — the robot will try again.",
+        gate_ready_vip: "VIP access active", gate_ready_free: "Free access", gate_ready_text: "Account ID {id}",
         update_check: "Check for updates", update_checking: "Checking for updates…",
         update_current: "You have the latest version {version}",
         update_available: "Version {version} found. Downloading…",
@@ -1466,7 +2096,19 @@
         update_error: "Could not check for updates",
         splash_connect: "Connecting to the platform…", splash_page: "Loading trading terminal…",
         splash_robot: "Starting the robot…", splash_ready: "All set", splash_error: "Failed to load the page",
-        splash_retry: "Retry", step_platform: "Platform", step_page: "Terminal", step_robot: "Robot"
+        splash_retry: "Retry", step_platform: "Platform", step_page: "Terminal", step_robot: "Robot",
+        dom_title: "Page elements", dom_check: "Check elements",
+        dom_note: "If the robot can't find a button or field, press “Select” and click it on the page on the left — the robot will remember it.",
+        dom_el_balance: "Balance", dom_el_userMenu: "Account menu", dom_el_assetAdd: "“+” add pair button",
+        dom_el_investInput: "Trade amount field", dom_el_tradeUp: "“Up” button", dom_el_tradeDown: "“Down” button",
+        dom_state_ok: "Found by the robot", dom_state_auto: "Found by auto-search", dom_state_picked: "Selected by you",
+        dom_state_pending: "Needs confirmation", dom_state_missing: "Not found",
+        dom_pick: "Select", dom_show: "Show", dom_reset: "Reset", dom_yes: "Yes, correct", dom_no: "No",
+        dom_cancel: "Cancel", dom_not_ready: "Wait for the robot to load first.",
+        dom_alert_missing: "The robot couldn't find: {name}. Select it on the page.",
+        dom_alert_pending: "Auto-search found “{name}”. Press “Show” and confirm — until then the robot won't trade with it.",
+        dom_alert_picking: "Click the “{name}” element on the page on the left. Esc — cancel.",
+        dom_pick_hint: "Click the element · Esc — cancel"
       },
       pt: {
         brand: "Robô de trading", free: "Acesso gratuito", vip_access: "Acesso VIP",
@@ -1482,13 +2124,24 @@
         otc: "Pares OTC", otc_d: "Operar ativos de balcão",
         trailing: "Trailing Stop", trailing_d: "Acompanhar o stop com o lucro",
         reinvest: "Reinvestir lucro", reinvest_d: "Aumentar a entrada com o lucro",
-        start: "Iniciar robô", starting: "Iniciando...", started: "Robô ativo",
-        ai: "Análise IA", stop: "Parar", lessons: "Instruções",
+        start: "Iniciar robô", starting: "Iniciando...", halt: "Parar robô",
+        ai: "Análise IA", signals: "Sinais", lessons: "Instruções", support: "Suporte",
+        sig_active: "ATIVO", sig_recent: "ÚLTIMOS 10 SINAIS", sig_up: "ACIMA", sig_down: "ABAIXO",
+        sig_open: "Abrir", sig_strength: "Força", sig_empty: "Não há sinais agora", sig_error: "Não foi possível carregar os sinais", sig_ago: "há {n} min", sig_now: "agora", sig_sec: "s", sig_until: "Até atualizar",
         buy_vip: "Comprar VIP", vip_active: "VIP ativo",
         nav_back: "Voltar", nav_forward: "Avançar", nav_reload: "Recarregar", nav_home: "Início Quotex",
         nav_menu: "Menu", nav_hard_reload: "Recarregar sem cache", nav_zoom: "Zoom",
         nav_fullscreen: "Tela cheia", nav_devtools: "Ferramentas do desenvolvedor",
         nav_domains: "Espelhos da corretora", nav_quit: "Sair",
+        proxy_menu: "Proxy", proxy_user: "Usuário", proxy_pass: "Senha",
+        proxy_apply: "Aplicar", proxy_off: "Desligar", proxy_bad: "Informe o endereço e a porta",
+        proxy_on: "Proxy ativado", proxy_disabled: "Proxy desativado",
+        gate_step_login: "Entrar no site", gate_step_id: "Obtendo ID", gate_step_access: "Verificando VIP / Free",
+        gate_login_title: "Entre na sua conta", gate_login_text: "Faça login no site da corretora à esquerda — o robô detectará sua conta.",
+        gate_id_title: "Detectando seu ID", gate_id_text: "Lendo o número da conta no perfil da corretora…",
+        gate_access_title: "Verificando acesso", gate_access_text: "Conferindo seu ID no servidor Q-bot para ativar VIP ou Free.",
+        gate_error_title: "ID não encontrado", gate_error_text: "Recarregue a página da corretora (F5) — o robô tentará novamente.",
+        gate_ready_vip: "Acesso VIP ativo", gate_ready_free: "Acesso gratuito", gate_ready_text: "Conta ID {id}",
         update_check: "Verificar atualizações", update_checking: "Verificando atualizações…",
         update_current: "A versão {version} já é a mais recente",
         update_available: "Versão {version} encontrada. Baixando…",
@@ -1499,7 +2152,19 @@
         update_error: "Não foi possível verificar a atualização",
         splash_connect: "Conectando à plataforma…", splash_page: "Carregando o terminal de trading…",
         splash_robot: "Iniciando o robô…", splash_ready: "Tudo pronto", splash_error: "Não foi possível carregar a página",
-        splash_retry: "Tentar novamente", step_platform: "Plataforma", step_page: "Terminal", step_robot: "Robô"
+        splash_retry: "Tentar novamente", step_platform: "Plataforma", step_page: "Terminal", step_robot: "Robô",
+        dom_title: "Elementos da página", dom_check: "Verificar elementos",
+        dom_note: "Se o robô não encontrar um botão ou campo, clique em “Indicar” e depois nele na página à esquerda — o robô vai lembrar.",
+        dom_el_balance: "Saldo", dom_el_userMenu: "Menu da conta", dom_el_assetAdd: "Botão “+” de adicionar par",
+        dom_el_investInput: "Campo do valor da operação", dom_el_tradeUp: "Botão “Para cima”", dom_el_tradeDown: "Botão “Para baixo”",
+        dom_state_ok: "Encontrado pelo robô", dom_state_auto: "Encontrado pela busca automática", dom_state_picked: "Indicado por você",
+        dom_state_pending: "Precisa de confirmação", dom_state_missing: "Não encontrado",
+        dom_pick: "Indicar", dom_show: "Mostrar", dom_reset: "Redefinir", dom_yes: "Sim, correto", dom_no: "Não",
+        dom_cancel: "Cancelar", dom_not_ready: "Aguarde o robô carregar primeiro.",
+        dom_alert_missing: "O robô não encontrou: {name}. Indique na página.",
+        dom_alert_pending: "A busca automática encontrou “{name}”. Clique em “Mostrar” e confirme — até lá o robô não operará com ele.",
+        dom_alert_picking: "Clique no elemento “{name}” na página à esquerda. Esc — cancelar.",
+        dom_pick_hint: "Clique no elemento · Esc — cancelar"
       }
     };
 
@@ -1545,12 +2210,205 @@
       const splashStage = $("splash-status").dataset.stage;
       if (splashStage) $("splash-status").textContent = t("splash_" + splashStage);
       renderUpdate();
+      renderGateText();
+      if (proxyInfo) renderProxy();
+      renderDomList();
+      domAlertSig = "";
+      renderDomAlert(domSummary);
       syncStrategy();
+    }
+
+    const GATE_STEPS = ["login", "id", "access"];
+
+    function renderGateText() {
+      const stage = gateInfo.stage;
+      const gate = $("gate");
+      if (stage === "ready") {
+        $("gate-badge").textContent = gateInfo.vip ? "VIP" : "FREE";
+        $("gate-title").textContent = t(gateInfo.vip ? "gate_ready_vip" : "gate_ready_free");
+        $("gate-text").textContent = "";
+      } else {
+        $("gate-title").textContent = t("gate_" + stage + "_title");
+        $("gate-text").textContent = t("gate_" + stage + "_text");
+      }
+      const idChip = $("gate-id");
+      const showId = !!gateInfo.id && (stage === "access" || stage === "ready");
+      idChip.hidden = !showId;
+      if (showId) idChip.textContent = t("gate_ready_text").replace("{id}", gateInfo.id);
+      gate.classList.toggle("vip", stage === "ready" && !!gateInfo.vip);
+      const index = stage === "ready" ? GATE_STEPS.length : stage === "error" ? 1 : GATE_STEPS.indexOf(stage);
+      document.querySelectorAll("[data-gate-step]").forEach((item) => {
+        const stepIndex = GATE_STEPS.indexOf(item.dataset.gateStep);
+        item.classList.toggle("done", stepIndex < index);
+        item.classList.toggle("active", stepIndex === index && stage !== "error");
+      });
+    }
+
+    function renderGate(account) {
+      const next = {
+        stage: (account && account.stage) || "login",
+        id: account ? account.id : null,
+        vip: account ? account.vip : null,
+      };
+      const gate = $("gate");
+
+      if (next.stage === "ready") {
+        if (gateDone) return;
+        gateDone = true;
+        gateInfo = next;
+        gate.dataset.stage = "ready";
+        gate.classList.remove("hide");
+        renderGateText();
+        clearTimeout(gateHideTimer);
+        gateHideTimer = setTimeout(() => gate.classList.add("hide"), 1800);
+        return;
+      }
+
+      if (gateDone) {
+        if (next.stage !== "login") return;
+        if (!gateLoginSince) gateLoginSince = Date.now();
+        if (Date.now() - gateLoginSince < 3000) return;
+        gateDone = false;
+      }
+      if (next.stage !== "login") gateLoginSince = 0;
+
+      clearTimeout(gateHideTimer);
+      gateInfo = next;
+      gate.dataset.stage = next.stage;
+      gate.classList.remove("hide");
+      renderGateText();
     }
 
     function toggleSettings(open) {
       $("settings-panel").classList.toggle("open", open);
       $("settings-panel").setAttribute("aria-hidden", String(!open));
+      if (open) loadDomReport();
+    }
+
+    function domLabel(key) {
+      return t("dom_el_" + key);
+    }
+
+    function domButton(text, onClick, primary) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = text;
+      if (primary) button.className = "primary";
+      button.addEventListener("click", onClick);
+      return button;
+    }
+
+    async function domAction(action, key) {
+      const result = await window.qbot.dom(action, key, key ? domLabel(key) : "", t("dom_pick_hint")).catch(() => null);
+      if (!result || result.ok === false) {
+        if (action === "report" || action === "pick") $("dom-list").textContent = t("dom_not_ready");
+        return null;
+      }
+      if (action !== "highlight" && action !== "pick") await loadDomReport();
+      domAlertSig = "";
+      refresh();
+      return result;
+    }
+
+    function domRowActions(item) {
+      const actions = [];
+      if (item.state === "pending") {
+        actions.push(domButton(t("dom_show"), () => domAction("highlight", item.key)));
+        actions.push(domButton(t("dom_yes"), () => domAction("confirm", item.key), true));
+        actions.push(domButton(t("dom_no"), () => domAction("reject", item.key)));
+        actions.push(domButton(t("dom_pick"), () => domAction("pick", item.key)));
+        return actions;
+      }
+      if (item.state !== "missing") actions.push(domButton(t("dom_show"), () => domAction("highlight", item.key)));
+      actions.push(domButton(t("dom_pick"), () => domAction("pick", item.key), item.state === "missing"));
+      if (item.saved) actions.push(domButton(t("dom_reset"), () => domAction("forget", item.key)));
+      return actions;
+    }
+
+    function renderDomList() {
+      const list = $("dom-list");
+      list.textContent = "";
+      if (!domItems) return;
+      const order = (key) => DOM_KEYS.indexOf(key);
+      [...domItems].sort((a, b) => order(a.key) - order(b.key)).forEach((item) => {
+        const row = document.createElement("div");
+        row.className = "dom-row";
+        row.dataset.state = item.state;
+        const dot = document.createElement("span");
+        dot.className = "dot";
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        const name = document.createElement("b");
+        name.textContent = domLabel(item.key);
+        const state = document.createElement("small");
+        state.textContent = t("dom_state_" + item.state);
+        meta.append(name, state);
+        const acts = document.createElement("div");
+        acts.className = "acts";
+        acts.append(...domRowActions(item));
+        row.append(dot, meta, acts);
+        list.appendChild(row);
+      });
+    }
+
+    async function loadDomReport() {
+      const button = $("dom-check");
+      button.classList.add("busy");
+      const result = await window.qbot.dom("report").catch(() => null);
+      button.classList.remove("busy");
+      if (!result || !result.ok) {
+        domItems = null;
+        $("dom-list").textContent = t("dom_not_ready");
+        return;
+      }
+      domItems = result.items;
+      renderDomList();
+    }
+
+    function renderDomAlert(summary) {
+      const box = $("dom-alert");
+      const wasPicking = domSummary && domSummary.picking;
+      domSummary = summary || null;
+      if (wasPicking && !(summary && summary.picking) && $("settings-panel").classList.contains("open")) loadDomReport();
+
+      let mode = null;
+      let key = null;
+      if (summary && summary.picking) {
+        mode = "picking";
+        key = summary.picking;
+      } else if (summary && gateDone) {
+        const issue =
+          summary.issues.find((i) => i.state === "pending") ||
+          summary.issues.find((i) => i.state === "missing");
+        if (issue) {
+          mode = issue.state;
+          key = issue.key;
+        }
+      }
+
+      const sig = mode ? mode + ":" + key + ":" + currentLang() : "";
+      if (sig === domAlertSig) return;
+      domAlertSig = sig;
+      if (!mode) {
+        box.hidden = true;
+        return;
+      }
+      box.className = "dom-alert " + mode;
+      $("dom-alert-text").textContent = t("dom_alert_" + mode).replace("{name}", domLabel(key));
+      const actions = $("dom-alert-actions");
+      actions.textContent = "";
+      if (mode === "picking") {
+        actions.append(domButton(t("dom_cancel"), () => domAction("cancel")));
+      } else if (mode === "pending") {
+        actions.append(
+          domButton(t("dom_show"), () => domAction("highlight", key)),
+          domButton(t("dom_yes"), () => domAction("confirm", key), true),
+          domButton(t("dom_no"), () => domAction("reject", key))
+        );
+      } else {
+        actions.append(domButton(t("dom_pick"), () => domAction("pick", key), true));
+      }
+      box.hidden = false;
     }
 
     function formPatch() {
@@ -1664,6 +2522,26 @@
     applyLanguage();
     drawSpark();
 
+    let fullAddress = $("url").value;
+
+    function maskAddress(url) {
+      const raw = String(url || "").trim();
+      if (!raw) return "";
+      try {
+        const parsed = new URL(raw);
+        const path = parsed.pathname && parsed.pathname !== "/" ? parsed.pathname.replace(/\/$/, "") : "";
+        return parsed.host + path;
+      } catch (e) {
+        return raw.split("?")[0].replace(/^https?:\/\//, "");
+      }
+    }
+
+    function paintAddress(url) {
+      if (url) fullAddress = url;
+      const field = $("url");
+      field.value = document.activeElement === field ? fullAddress : maskAddress(fullAddress);
+    }
+
     $("nav").addEventListener("submit", (event) => {
       event.preventDefault();
       window.qbot.navigate($("url").value);
@@ -1678,17 +2556,321 @@
         editing = false;
       });
     });
+    let startTogglePending = false;
+
+    function setStartButton(running) {
+      const button = $("start");
+      button.classList.toggle("live", !!running);
+      const icon = button.querySelector("svg");
+      if (icon) {
+        icon.innerHTML = running
+          ? '<rect x="7" y="7" width="10" height="10" rx="1.5"/>'
+          : '<path d="m8 5 11 7-11 7z"/>';
+      }
+      startKey = running ? "halt" : "start";
+      setLabel("start", t(startKey));
+    }
+
     $("start").addEventListener("click", async () => {
       showError("");
+      if ($("start").classList.contains("live")) {
+        startTogglePending = true;
+        await window.qbot.stop();
+        setStartButton(false);
+        startTogglePending = false;
+        return;
+      }
+      startTogglePending = true;
       startKey = "starting";
       setLabel("start", t(startKey));
       await window.qbot.save(formPatch());
       const result = await window.qbot.start();
-      startKey = result && result.ok ? "started" : "start";
-      setLabel("start", t(startKey));
+      setStartButton(!!(result && result.ok));
+      startTogglePending = false;
       if (result && result.error) showError(result.error);
     });
-    $("stop").addEventListener("click", () => window.qbot.stop());
+    $("dom-check").addEventListener("click", loadDomReport);
+    $("support").addEventListener("click", () => {
+      window.qbot.openExternal("https://t.me/o_signals1");
+    });
+    function sigFlag(code) {
+      const id = "flag-" + String(code || "").toLowerCase();
+      return `<svg class="sig-flag"><use href="#${id}"></use></svg>`;
+    }
+
+    let flagsReady = null;
+    function ensureFlags() {
+      if (flagsReady) return flagsReady;
+      flagsReady = window.qbot.flags()
+        .then((text) => {
+          if (!text) return;
+          const holder = document.createElement("div");
+          holder.id = "sig-flag-sprite";
+          holder.hidden = true;
+          holder.innerHTML = text;
+          document.body.appendChild(holder);
+        })
+        .catch(() => {
+          flagsReady = null;
+        });
+      return flagsReady;
+    }
+
+    function sigFlags(pair) {
+      return `<span class="sig-flags">${sigFlag(pair.slice(0, 3))}${sigFlag(pair.slice(3))}</span>`;
+    }
+
+    const SIG_TF = { "1M": 1, "5M": 5, "15M": 15, "30M": 30, "1H": 60 };
+    const SIG_HISTORY_KEY = "qbot_signal_history";
+    const SIG_REFRESH_MS = 50000;
+    let sigTf = "1M";
+    let sigItems = [];
+    let sigNextAt = 0;
+    let sigClock = null;
+    let sigLoading = false;
+    let sigAgePaint = 0;
+
+    function readSignalHistory() {
+      try {
+        const raw = JSON.parse(localStorage.getItem(SIG_HISTORY_KEY) || "[]");
+        return Array.isArray(raw) ? raw : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function writeSignalHistory(items) {
+      localStorage.setItem(SIG_HISTORY_KEY, JSON.stringify(items.slice(0, 40)));
+    }
+
+    function rememberSignals(items) {
+      const history = readSignalHistory();
+      const now = Date.now();
+      items.slice().reverse().forEach((item) => {
+        if (!item || item.dir === "NONE") return;
+        const top = history[0];
+        if (top && top.pair === item.pair && top.dir === item.dir && top.tf === sigTf) {
+          top.price = item.price;
+          top.strength = item.strength;
+          return;
+        }
+        history.unshift({
+          pair: item.pair,
+          price: item.price,
+          dir: item.dir,
+          strength: item.strength,
+          tf: sigTf,
+          at: now,
+        });
+      });
+      writeSignalHistory(history);
+    }
+
+    function sigAgo(at) {
+      const min = Math.floor((Date.now() - Number(at)) / 60000);
+      if (!Number.isFinite(min) || min < 1) return t("sig_now");
+      return t("sig_ago").replace("{n}", String(min));
+    }
+
+    function paintTimer() {
+      const bar = document.querySelector("#sig-active .sig-bar i");
+      const label = document.querySelector("#sig-active .sig-left");
+      if (bar && sigNextAt) {
+        const left = Math.max(0, sigNextAt - Date.now());
+        bar.style.width = (left / SIG_REFRESH_MS) * 100 + "%";
+        if (label) label.textContent = Math.ceil(left / 1000) + " " + t("sig_sec");
+      }
+      const now = Date.now();
+      if (now - sigAgePaint < 1000) return;
+      sigAgePaint = now;
+      document.querySelectorAll("#sig-list .sig-ago").forEach((el) => {
+        el.textContent = sigAgo(el.dataset.at);
+      });
+    }
+
+    function ensureSigClock() {
+      if (sigClock) return;
+      sigClock = setInterval(() => {
+        if ($("signals-panel").hidden) {
+          stopSigLoop();
+          return;
+        }
+        paintTimer();
+        if (!sigLoading && sigNextAt && Date.now() >= sigNextAt) loadSignals({ skeleton: false });
+      }, 200);
+    }
+
+    function stopSigLoop() {
+      clearInterval(sigClock);
+      sigClock = null;
+    }
+
+    function mapSignal(item) {
+      if (!item || !item.pair) return null;
+      const action = String(item.action || "");
+      const dir = action === "BUY_CALL" ? "UP" : action === "BUY_PUT" ? "DOWN" : "NONE";
+      const strength = Number(item.strength);
+      return {
+        pair: String(item.pair).toUpperCase(),
+        price: item.price == null ? "" : item.price,
+        dir,
+        strength: Number.isFinite(strength) ? Math.max(0, Math.min(100, Math.round(strength))) : 0,
+      };
+    }
+
+    function sigPair(pair) {
+      return pair.slice(0, 3) + "/" + pair.slice(3);
+    }
+
+    function sigPrice(price) {
+      return String(price || "").replace(".", ",");
+    }
+
+    function sigChart(pair, up) {
+      const seed = [...String(pair)].reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
+      const pts = [];
+      let y = 46;
+      for (let i = 0; i < 16; i++) {
+        y += -1.15 + Math.sin((seed + i * 3) * 0.65) * 7;
+        y = Math.max(10, Math.min(54, y));
+        pts.push([6 + i * 18, Math.round(y)]);
+      }
+      const line = pts.map((point) => point.join(",")).join(" ");
+      const color = up ? "#2ee6a6" : "#ff6d86";
+      const last = pts[pts.length - 1];
+      return `<svg class="sig-chart" viewBox="0 0 280 64" preserveAspectRatio="none">
+        <defs><linearGradient id="sig-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${color}" stop-opacity="0.35"/><stop offset="100%" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>
+        <polygon points="0,64 ${line} 280,64" fill="url(#sig-fill)"/>
+        <polyline points="${line}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+        <circle cx="${last[0]}" cy="${last[1]}" r="3.2" fill="${color}"/>
+      </svg>`;
+    }
+
+    function signalHistoryRows() {
+      const active = sigItems[0];
+      let skipped = false;
+      return readSignalHistory().filter((item) => {
+        if (item.tf !== sigTf) return false;
+        if (!skipped && active && item.pair === active.pair && item.dir === active.dir) {
+          skipped = true;
+          return false;
+        }
+        return true;
+      }).slice(0, 10);
+    }
+
+    function renderSignals() {
+      const active = sigItems[0];
+      const activeBox = $("sig-active");
+      const left = sigNextAt ? Math.max(0, sigNextAt - Date.now()) : SIG_REFRESH_MS;
+      const timerPct = Math.max(0, Math.min(100, (left / SIG_REFRESH_MS) * 100));
+      if (!active) {
+        activeBox.innerHTML = `<p class="sig-note">${t("sig_empty")}</p>`;
+      } else {
+        const up = active.dir === "UP";
+        const dirText = active.dir === "DOWN" ? t("sig_down") : active.dir === "UP" ? t("sig_up") : "—";
+        const openText = active.dir === "DOWN" ? "Вниз" : active.dir === "UP" ? "Вверх" : "—";
+        activeBox.innerHTML = `<article class="sig-card">
+          <div class="sig-top">
+            ${sigFlags(active.pair)}
+            <div class="sig-name"><b>${sigPair(active.pair)}</b><span class="sig-live"><i></i>LIVE</span></div>
+            <div class="sig-side"><b class="${up ? "up" : "down"}">${dirText}</b></div>
+          </div>
+          <div class="sig-price-row"><b>${sigPrice(active.price)}</b><small>${t("sig_strength")} ${active.strength}%</small></div>
+          ${sigChart(active.pair, up)}
+          <div class="sig-wait">
+            <div class="sig-wait-meta"><span>${t("sig_until")}</span><b class="sig-left">${Math.ceil(left / 1000)} ${t("sig_sec")}</b></div>
+            <span class="sig-bar ${up ? "" : "down"}"><i style="width:${timerPct}%"></i></span>
+          </div>
+          <button class="sig-open ${up ? "up" : "down"}" type="button" data-pair="${active.pair}" data-way="${active.dir}" ${active.dir === "NONE" ? "disabled" : ""}>${t("sig_open")} · ${openText}</button>
+        </article>`;
+      }
+      $("sig-list").innerHTML = signalHistoryRows().map((item) => {
+        const itemUp = item.dir === "UP";
+        const itemDir = item.dir === "DOWN" ? t("sig_down") : item.dir === "UP" ? t("sig_up") : "—";
+        return `<article class="sig-row">
+          ${sigFlags(item.pair)}
+          <div class="sig-meta"><b>${sigPair(item.pair)}</b><small>${sigPrice(item.price)} · ${item.tf || sigTf} · <span class="sig-ago" data-at="${item.at}">${sigAgo(item.at)}</span></small></div>
+          <div class="sig-side"><b class="${itemUp ? "up" : "down"}">${itemDir}</b><small>${t("sig_strength")} ${item.strength}%</small></div>
+        </article>`;
+      }).join("");
+    }
+
+    function signalSkeleton() {
+      const bone = (cls) => `<i class="sig-bone ${cls}"></i>`;
+      const row = `<article class="sig-row sig-sk">${bone("flag")}<div class="sig-meta">${bone("name")}${bone("sub")}</div>${bone("side")}</article>`;
+      return {
+        active: `<article class="sig-card sig-sk">
+          <div class="sig-top">${bone("flag")}<div class="sig-name">${bone("name")}${bone("pill")}</div>${bone("side")}</div>
+          <div class="sig-price-row">${bone("price")}${bone("sub")}</div>
+          ${bone("chart")}${bone("bar")}${bone("btn")}
+        </article>`,
+        list: row + row + row,
+      };
+    }
+
+    async function loadSignals(options) {
+      if (sigLoading) return;
+      sigLoading = true;
+      $("sig-refresh").classList.add("busy");
+      const hasCard = !!$("sig-active").querySelector(".sig-card:not(.sig-sk)");
+      const showSkeleton = !options || options.skeleton !== false || !hasCard;
+      if (showSkeleton) {
+        const sk = signalSkeleton();
+        $("sig-active").innerHTML = sk.active;
+        $("sig-list").innerHTML = sk.list;
+      }
+      try {
+        const result = await window.qbot.signals(SIG_TF[sigTf] || 1);
+        const ranked = result && result.ok && Array.isArray(result.ranked) ? result.ranked : [];
+        if (!result || !result.ok) {
+          if (showSkeleton) {
+            $("sig-active").innerHTML = `<p class="sig-note">${t("sig_error")}</p>`;
+            $("sig-list").innerHTML = "";
+          }
+        } else {
+          sigItems = ranked.map(mapSignal).filter(Boolean);
+          rememberSignals(sigItems);
+          await ensureFlags();
+          renderSignals();
+        }
+      } catch (e) {
+        if (showSkeleton) {
+          $("sig-active").innerHTML = `<p class="sig-note">${t("sig_error")}</p>`;
+          $("sig-list").innerHTML = "";
+        }
+      }
+      sigNextAt = Date.now() + SIG_REFRESH_MS;
+      sigLoading = false;
+      $("sig-refresh").classList.remove("busy");
+      paintTimer();
+      if (!$("signals-panel").hidden) ensureSigClock();
+    }
+
+    $("signals").addEventListener("click", () => {
+      const panel = $("signals-panel");
+      panel.hidden = false;
+      loadSignals();
+    });
+    $("sig-close").addEventListener("click", () => {
+      $("signals-panel").hidden = true;
+      stopSigLoop();
+    });
+    $("sig-refresh").addEventListener("click", loadSignals);
+    $("sig-tfs").addEventListener("click", (event) => {
+      const button = event.target.closest("button");
+      if (!button) return;
+      sigTf = button.dataset.tf;
+      $("sig-tfs").querySelectorAll("button").forEach((item) => item.classList.toggle("on", item === button));
+      loadSignals();
+    });
+    $("sig-active").addEventListener("click", async (event) => {
+      const button = event.target.closest(".sig-open");
+      if (!button || button.disabled) return;
+      button.disabled = true;
+      await window.qbot.openSignal({ symbol: button.dataset.pair, way: button.dataset.way });
+      button.disabled = false;
+    });
     $("ai").addEventListener("click", async () => {
       const result = await window.qbot.ai();
       if (result && result.error) showError(result.error);
@@ -1751,7 +2933,6 @@
       splash.classList.remove("error");
       const next = STAGES.indexOf(data.stage);
       if (next < 0) return;
-      if (data.stage === "connect" && splashState.stage !== "connect") splashState.value = 0;
       splashState.stage = data.stage;
       splashState.target = STAGE_TARGET[data.stage];
       renderSplashStage();
@@ -1809,13 +2990,44 @@
       if (state.url) {
         try { $("splash-host").textContent = new URL(state.url).host; } catch (e) { /* адрес ещё пустой */ }
         $("tb-secure").classList.toggle("insecure", !state.url.startsWith("https://"));
-        if (document.activeElement !== $("url")) $("url").value = state.url;
+        if (document.activeElement !== $("url")) paintAddress(state.url);
       }
       if (state.zoom) $("zoom-value").textContent = state.zoom + "%";
     }
 
     function browser(action) {
       return window.qbot.browser(action).then(renderNav);
+    }
+
+    function renderProxy() {
+      const on = !!(proxyInfo && proxyInfo.enabled);
+      $("proxy-toggle").classList.toggle("proxy-on", on);
+      $("proxy-status").classList.remove("error");
+      $("proxy-status").textContent = on ? t("proxy_on") : "";
+    }
+
+    function fillProxy(info) {
+      proxyInfo = info;
+      if (info) {
+        $("proxy-scheme").value = info.scheme || "http";
+        $("proxy-host").value = info.host || "";
+        $("proxy-port").value = info.port || "";
+        $("proxy-user").value = info.username || "";
+        $("proxy-pass").value = "";
+        $("proxy-pass").placeholder = info.hasPassword ? "••••••••" : t("proxy_pass");
+      }
+      renderProxy();
+    }
+
+    function proxyPayload(enabled) {
+      return {
+        enabled,
+        scheme: $("proxy-scheme").value,
+        host: $("proxy-host").value.trim(),
+        port: Number($("proxy-port").value),
+        username: $("proxy-user").value,
+        password: $("proxy-pass").value,
+      };
     }
 
     function toggleMenu(open) {
@@ -1853,6 +3065,31 @@
       install.hidden = state !== "ready";
     }
 
+    $("proxy-toggle").addEventListener("click", (event) => {
+      event.stopPropagation();
+      $("proxy-box").hidden = !$("proxy-box").hidden;
+    });
+    $("proxy-box").addEventListener("click", (event) => event.stopPropagation());
+    $("proxy-apply").addEventListener("click", () => {
+      window.qbot.setProxy(proxyPayload(true)).then((result) => {
+        if (!result.ok) {
+          $("proxy-status").textContent = t("proxy_bad");
+          $("proxy-status").classList.add("error");
+          return;
+        }
+        fillProxy(result.proxy);
+      });
+    });
+    $("proxy-off").addEventListener("click", () => {
+      window.qbot.setProxy(proxyPayload(false)).then((result) => {
+        if (result.ok) {
+          fillProxy(result.proxy);
+          $("proxy-status").textContent = t("proxy_disabled");
+        }
+      });
+    });
+    if (window.qbot.proxy) window.qbot.proxy().then(fillProxy);
+
     $("update-check").addEventListener("click", (event) => {
       event.stopPropagation();
       window.qbot.checkUpdate();
@@ -1885,7 +3122,15 @@
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") toggleMenu(false);
     });
-    $("url").addEventListener("focus", () => $("url").select());
+    $("url").addEventListener("focus", () => {
+      $("url").value = fullAddress;
+      $("url").select();
+    });
+    $("url").addEventListener("blur", () => {
+      const typed = $("url").value.trim();
+      if (typed && typed !== fullAddress && typed !== maskAddress(fullAddress)) fullAddress = typed;
+      $("url").value = maskAddress(fullAddress);
+    });
     window.qbot.onNavState(renderNav);
     window.qbot.onFocusAddress(() => {
       $("url").focus();
@@ -1894,7 +3139,7 @@
     window.qbot.navState().then(renderNav);
 
     window.qbot.onNavigated((url) => {
-      if (document.activeElement !== $("url")) $("url").value = url;
+      if (document.activeElement !== $("url")) paintAddress(url);
       settingsLoaded = false;
     });
 
@@ -1916,8 +3161,10 @@
         $("log").textContent = data.log || t("log_default");
         $("state").textContent = t(isRunning ? "running" : "idle");
         $("state").className = data.running ? "pill on" : "pill";
-        $("start").classList.toggle("live", !!data.running);
+        if (!startTogglePending) setStartButton(!!data.running);
         if (data.ready) applyVip(!!data.vip);
+        if (data.ready) renderGate(data.account);
+        renderDomAlert(data.dom);
         if (data.ready && !settingsLoaded) {
           const settings = await window.qbot.settings();
           fill(settings);

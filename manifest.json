@@ -24,6 +24,7 @@
         "css/jquery-3.6.0.min.js",
         "css/jquery-ui.js",
         "main/dom-resolver.js",
+        "main/dom-healer.js",
         "main/content.js",
         "main/loadpage.js",
         "main/deal.js",
