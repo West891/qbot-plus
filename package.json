@@ -1,14 +1,15 @@
 {
   "name": "qbot-plus",
   "productName": "Q-bot PLUS",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "description": "Q-bot PLUS desktop app for Quotex",
   "main": "electron/main.js",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder --win --publish never",
-    "release": "electron-builder --win --publish always"
+    "stats": "node landing/stats-server.js",
+    "dist": "electron-builder --config electron-builder.config.js --win --publish never",
+    "release": "electron-builder --config electron-builder.config.js --win --publish always"
   },
   "devDependencies": {
     "electron": "^35.7.5",

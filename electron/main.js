@@ -515,7 +515,7 @@ function createWindow(targetUrl) {
     minWidth: 1100,
     minHeight: 680,
     title: "Q-bot PLUS",
-    icon: path.join(ROOT, "logo", "logo-128.png"),
+    icon: path.join(ROOT, "logo", "icon-512.png"),
     backgroundColor: "#0a0f1c",
     titleBarStyle: "hidden",
     titleBarOverlay: {

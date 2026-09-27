@@ -2,3 +2,7 @@ node_modules/
 dist/
 out/
 dev-app-update.yml
+landing/stats.secret.json
+landing/stats-secret.php
+landing/stats-data.json
+landing/stats-data.php

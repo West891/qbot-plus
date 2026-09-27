@@ -27,7 +27,7 @@ module.exports = {
     : undefined,
   win: {
     target: ["nsis"],
-    icon: "logo/logo-128.png",
+    icon: "logo/icon-512.png",
   },
   nsis: {
     oneClick: true,
