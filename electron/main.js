@@ -10,6 +10,7 @@ const {
 } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
+const { pathToFileURL } = require("node:url");
 const { setupUpdater } = require("./updater");
 
 const ROOT = path.join(__dirname, "..");
@@ -20,13 +21,16 @@ if (!app.isPackaged) {
   app.commandLine.appendSwitch("remote-allow-origins", "http://127.0.0.1:9333");
 }
 const START_URL = "https://youlink.biz/3S2M";
+// Короткая ссылка иногда не отвечает — тогда открываем брокера напрямую.
+const FALLBACK_URL = "https://quotex.com/en/trade";
 const BROKER_PARTITION = "persist:qbot";
+
+// qxbroker.com и market.qx.trade больше не резолвятся (NXDOMAIN / обрыв TLS).
+const DEAD_HOSTS = ["qxbroker.com", "market.qx.trade"];
 
 const BROKER_HOSTS = [
   "quotex.com",
-  "qxbroker.com",
   "market-qx.pro",
-  "market.qx.trade",
   "broker-qx.pro",
   "market-qx.trade",
   "market-qx.info",
@@ -360,10 +364,19 @@ function publicProxy(config) {
   };
 }
 
+function isDeadHost(rawUrl) {
+  try {
+    const host = new URL(rawUrl).hostname.replace(/^www\./, "");
+    return DEAD_HOSTS.some((dead) => host === dead || host.endsWith("." + dead));
+  } catch (e) {
+    return false;
+  }
+}
+
 function readSessionState() {
   try {
     const data = JSON.parse(fs.readFileSync(sessionStatePath(), "utf8"));
-    if (data && canInjectUrl(data.lastUrl)) return data;
+    if (data && canInjectUrl(data.lastUrl) && !isDeadHost(data.lastUrl)) return data;
   } catch (e) {
     return null;
   }
@@ -371,7 +384,7 @@ function readSessionState() {
 }
 
 function writeSessionState(url) {
-  if (!canInjectUrl(url)) return;
+  if (!canInjectUrl(url) || isDeadHost(url)) return;
   try {
     fs.mkdirSync(path.dirname(sessionStatePath()), { recursive: true });
     fs.writeFileSync(
@@ -549,8 +562,12 @@ function createWindow(targetUrl) {
     clearTimeout(splashFallback);
     sendStage({ stage: "ready" });
   });
-  view.webContents.on("did-fail-load", (_event, code, description, _url, isMainFrame) => {
+  view.webContents.on("did-fail-load", (_event, code, description, failedUrl, isMainFrame) => {
     if (!isMainFrame || code === -3) return;
+    if (failedUrl === START_URL || isDeadHost(failedUrl)) {
+      view.webContents.loadURL(FALLBACK_URL);
+      return;
+    }
     sendStage({ stage: "error", code, description });
   });
   view.webContents.setUserAgent(brokerSession().getUserAgent());
@@ -636,7 +653,7 @@ app.whenReady().then(() => {
     callback(auth.username, auth.password);
   });
 
-  protocol.handle("qbot", (request) => {
+  const serveBundle = (request) => {
     let pathname = "/";
     try {
       pathname = new URL(request.url).pathname;
@@ -661,7 +678,15 @@ app.whenReady().then(() => {
     }
 
     return net.fetch(pathToFileURL(fullPath).toString());
-  });
+  };
+  protocol.handle("qbot", serveBundle);
+  brokerSession().protocol.handle("qbot", serveBundle);
+  // Service worker мёртвого домена отдаёт из кэша страницу «No connection».
+  for (const host of DEAD_HOSTS) {
+    brokerSession()
+      .clearStorageData({ origin: "https://" + host, storages: ["serviceworkers", "cachestorage"] })
+      .catch(() => {});
+  }
 
   function parseHeaderMoney(text) {
     let raw = String(text || "").replace(/\s/g, "").replace(/[^\d,.-]/g, "");
