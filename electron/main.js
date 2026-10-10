@@ -21,9 +21,12 @@ if (!app.isPackaged) {
   app.commandLine.appendSwitch("remote-debugging-port", "9333");
   app.commandLine.appendSwitch("remote-allow-origins", "http://127.0.0.1:9333");
 }
-const START_URL = "https://youlink.biz/3S2M";
-// Короткая ссылка иногда не отвечает — тогда открываем брокера напрямую.
-const FALLBACK_URL = "https://quotex.com/en/trade";
+// Партнёрская ссылка Quotex (lid) — открывается при первом запуске и по кнопке «Домой».
+const START_URL = "https://broker-qx.pro/?lid=2168373";
+// Если зеркало не отвечает — сам Quotex с тем же lid.
+const FALLBACK_URL = "https://quotex.com/?lid=2168373";
+// Сервер AI-анализа: ключ OpenRouter хранится только там (landing/ai-secret.php).
+const AI_URL = process.env.QBOT_AI_URL || "https://ai-tradebot.com/qbotplus/ai.php";
 const BROKER_PARTITION = "persist:qbot";
 
 // qxbroker.com и market.qx.trade больше не резолвятся (NXDOMAIN / обрыв TLS).
@@ -46,7 +49,6 @@ const CONTENT_SCRIPTS = [
   "main/loadpage.js",
   "main/deal.js",
   "main/buyvip.js",
-  "main/aianalys.js",
 ];
 
 protocol.registerSchemesAsPrivileged([
@@ -211,13 +213,6 @@ function buildChromeShim(cssText) {
           localStorage.setItem("statusbot", "notwork");
           const hid = document.querySelector("#qbot-header-dock .hid");
           if (hid) hid.style.visibility = "hidden";
-          return { ok: true };
-        },
-        ai() {
-          if (typeof ai !== "function") {
-            return { ok: false, error: "AI-анализ ещё не готов." };
-          }
-          ai();
           return { ok: true };
         }
       };
@@ -1140,11 +1135,93 @@ app.whenReady().then(() => {
     return runInBot(siteContentsFrom(event.sender), code);
   });
 
-  ipcMain.handle("qbot-ai", (event) => {
-    return runInBot(
-      siteContentsFrom(event.sender),
-      "globalThis.__QBOT_SIDEBAR_API__ ? globalThis.__QBOT_SIDEBAR_API__.ai() : { ok: false }"
-    );
+  // ——— AI-анализ: снимок графика → ai.php (OpenRouter, Qwen) → прогноз ———
+
+  // Largest visible canvas is the price chart; everything else (balance, menus) stays out of the shot.
+  const CHART_RECT_JS = `(() => {
+    let best = null;
+    for (const c of document.querySelectorAll("canvas")) {
+      const r = c.getBoundingClientRect();
+      const w = Math.min(r.right, innerWidth) - Math.max(r.left, 0);
+      const h = Math.min(r.bottom, innerHeight) - Math.max(r.top, 0);
+      if (w < 240 || h < 160) continue;
+      if (!best || w * h > best.w * best.h) best = { x: Math.max(r.left, 0), y: Math.max(r.top, 0), w, h };
+    }
+    return best;
+  })()`;
+
+  const ACTIVE_PAIR_JS = `(() => {
+    try {
+      const tab = QbotDom.collectPairTabs().find((el) => QbotDom.isPairTabActive(el));
+      return tab ? String(QbotDom.getPairTabName(tab) || "") : "";
+    } catch (e) {
+      return "";
+    }
+  })()`;
+
+  ipcMain.handle("qbot-ai-capture", async (event) => {
+    const contents = siteContentsFrom(event.sender);
+    if (!contents || contents.isDestroyed() || !brokerPage(contents)) return { ok: false, error: "no_page" };
+    try {
+      const rect = await contents.executeJavaScript(CHART_RECT_JS, true).catch(() => null);
+      const zoom = contents.getZoomFactor() || 1;
+      const area = rect
+        ? {
+            x: Math.round(rect.x * zoom),
+            y: Math.round(rect.y * zoom),
+            width: Math.round(rect.w * zoom),
+            height: Math.round(rect.h * zoom),
+          }
+        : undefined;
+      let image = await contents.capturePage(area);
+      if (image.isEmpty()) return { ok: false, error: "capture" };
+      const size = image.getSize();
+      if (size.width > 1280) image = image.resize({ width: 1280, quality: "best" });
+      const pair = await runInBot(contents, ACTIVE_PAIR_JS).catch(() => "");
+      return {
+        ok: true,
+        chart: !!rect,
+        pair: String(pair || "").slice(0, 30),
+        image: "data:image/jpeg;base64," + image.toJPEG(82).toString("base64"),
+      };
+    } catch (error) {
+      telemetry.reportError("ai", "Снимок графика не получился: " + (error && error.message ? error.message : error), errorDetails(contents, "capture"));
+      return { ok: false, error: "capture" };
+    }
+  });
+
+  ipcMain.handle("qbot-ai-analyze", async (event, payload) => {
+    const input = payload && typeof payload === "object" ? payload : {};
+    const image = String(input.image || "");
+    if (!image.startsWith("data:image/jpeg;base64,") || image.length > 2400000) return { ok: false, error: "bad_image" };
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 100000);
+    try {
+      const response = await net.fetch(AI_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "User-Agent": "QbotPlus/" + app.getVersion() },
+        body: JSON.stringify({
+          install: telemetry.installId(),
+          version: app.getVersion(),
+          lang: ["ru", "en", "pt"].includes(input.lang) ? input.lang : "en",
+          pair: String(input.pair || "").slice(0, 30),
+          image,
+        }),
+        signal: controller.signal,
+      });
+      const data = await response.json().catch(() => null);
+      if (data && typeof data === "object" && (data.ok || data.error)) {
+        if (!data.ok && data.error === "upstream") telemetry.reportError("ai", "AI-сервис не ответил (OpenRouter)", { source: "ai.php" });
+        return data;
+      }
+      return { ok: false, error: "upstream" };
+    } catch (error) {
+      const aborted = error && error.name === "AbortError";
+      telemetry.reportError("ai", aborted ? "AI-анализ: превышено время ожидания" : "AI-анализ: нет связи с сервером", { source: "ai.php" });
+      return { ok: false, error: aborted ? "timeout" : "network" };
+    } finally {
+      clearTimeout(timer);
+    }
   });
 
   ipcMain.handle("qbot-open-external", (_event, url) => {

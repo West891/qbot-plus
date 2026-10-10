@@ -8,3 +8,5 @@ landing/stats-data.json
 landing/stats-data.php
 landing/app-stats-secret.php
 landing/app-stats-data.php
+landing/ai-secret.php
+landing/ai-data.php

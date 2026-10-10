@@ -1812,6 +1812,435 @@
       50% { box-shadow: 0 8px 22px rgba(59, 130, 246, 0.45), 0 0 0 7px rgba(34, 211, 238, 0); }
     }
 
+    /* ——— AI-анализ ——— */
+    .ai-panel {
+      --ai-up: #34d399;
+      --ai-down: #fb7185;
+      --ai-wait: #fbbf24;
+      --ai-accent: #22d3ee;
+      position: absolute;
+      inset: 0;
+      z-index: 9;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 16px 14px 18px;
+      overflow-x: hidden;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(129, 140, 248, 0.35) transparent;
+      color: #e8eef8;
+      background: radial-gradient(120% 60% at 50% -10%, #1b2350 0%, #0b1020 55%, #070a14 100%);
+      isolation: isolate;
+      animation: ai-panel-in 0.45s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+    }
+    .ai-panel[hidden] { display: none; }
+    .ai-bg { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+    .ai-bg i {
+      position: absolute;
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: #a5b4fc;
+      box-shadow: 0 0 8px #818cf8;
+      opacity: 0;
+      animation: ai-particle 9s linear infinite;
+    }
+    .ai-bg i:nth-child(1) { left: 12%; animation-delay: 0s; }
+    .ai-bg i:nth-child(2) { left: 30%; animation-delay: -2s; animation-duration: 11s; }
+    .ai-bg i:nth-child(3) { left: 52%; animation-delay: -5s; }
+    .ai-bg i:nth-child(4) { left: 70%; animation-delay: -7s; animation-duration: 12s; }
+    .ai-bg i:nth-child(5) { left: 86%; animation-delay: -3.5s; }
+    .ai-bg i:nth-child(6) { left: 42%; animation-delay: -8s; animation-duration: 10s; background: #67e8f9; box-shadow: 0 0 8px #22d3ee; }
+
+    .ai-head { display: flex; align-items: center; gap: 10px; }
+    .ai-logo {
+      position: relative;
+      width: 38px;
+      height: 38px;
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      background: conic-gradient(from var(--upd-angle), #6366f1, #22d3ee, #a855f7, #6366f1);
+      animation: upd-spin 5s linear infinite;
+    }
+    .ai-logo::before { content: ""; position: absolute; inset: 2px; border-radius: 10px; background: #0d1330; }
+    .ai-logo svg { position: relative; width: 20px; height: 20px; fill: none; stroke: #c7d2fe; stroke-width: 1.8; stroke-linejoin: round; animation: spark 2.6s ease-in-out infinite; }
+    .ai-head-text { flex: 1; min-width: 0; }
+    .ai-head h2 { margin: 0; font-size: 20px; letter-spacing: -0.02em; }
+    .ai-head small { display: flex; align-items: center; gap: 6px; margin-top: 2px; font-size: 11px; color: #8b93a7; }
+    .ai-head small::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--ai-up); box-shadow: 0 0 8px var(--ai-up); animation: pulse 2s ease-in-out infinite; }
+    .ai-close { width: 34px; height: 34px; padding: 0; color: #9aa6bd; background: transparent; }
+    .ai-close:hover { color: white; background: rgba(255, 255, 255, 0.06); transform: none; }
+    .ai-close svg { width: 18px; height: 18px; }
+
+    .ai-frame {
+      position: relative;
+      aspect-ratio: 16 / 10;
+      overflow: hidden;
+      border-radius: 16px;
+      border: 1px solid rgba(129, 140, 248, 0.22);
+      background:
+        linear-gradient(rgba(99, 102, 241, 0.06) 1px, transparent 1px) 0 0 / 22px 22px,
+        linear-gradient(90deg, rgba(99, 102, 241, 0.06) 1px, transparent 1px) 0 0 / 22px 22px,
+        #0a0f1f;
+      box-shadow: inset 0 0 40px rgba(79, 70, 229, 0.18), 0 12px 40px rgba(0, 0, 0, 0.45);
+    }
+    .ai-frame img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0;
+    }
+    .ai-stage:not([data-state="idle"]) .ai-frame img[src] { opacity: 1; animation: ai-shot-in 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+    .ai-stage[data-state="thinking"] .ai-frame img { filter: saturate(0.75) brightness(0.8); transition: filter 0.6s ease; }
+    .ai-corner { position: absolute; width: 18px; height: 18px; border: 2px solid var(--ai-accent); filter: drop-shadow(0 0 6px var(--ai-accent)); opacity: 0.85; z-index: 3; }
+    .ai-corner.tl { top: 8px; left: 8px; border-right: 0; border-bottom: 0; border-radius: 6px 0 0 0; }
+    .ai-corner.tr { top: 8px; right: 8px; border-left: 0; border-bottom: 0; border-radius: 0 6px 0 0; }
+    .ai-corner.bl { bottom: 8px; left: 8px; border-right: 0; border-top: 0; border-radius: 0 0 0 6px; }
+    .ai-corner.br { bottom: 8px; right: 8px; border-left: 0; border-top: 0; border-radius: 0 0 6px 0; }
+    .ai-stage[data-state="thinking"] .ai-corner { animation: ai-corner 1.4s ease-in-out infinite; }
+
+    .ai-idle {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      align-content: center;
+      gap: 14px;
+      padding: 18px;
+      text-align: center;
+      transition: opacity 0.4s ease;
+    }
+    .ai-stage:not([data-state="idle"]) .ai-idle { opacity: 0; pointer-events: none; }
+    .ai-orb { position: relative; width: 92px; height: 92px; }
+    .ai-orb i { position: absolute; inset: 0; border-radius: 50%; border: 1.5px solid transparent; }
+    .ai-orb i:nth-child(1) { border-top-color: #818cf8; border-right-color: #818cf8; animation: spin 3.2s linear infinite; }
+    .ai-orb i:nth-child(2) { inset: 10px; border-bottom-color: #22d3ee; border-left-color: #22d3ee; animation: spin 2.2s linear infinite reverse; }
+    .ai-orb i:nth-child(3) { inset: 20px; border-top-color: #c084fc; animation: spin 1.6s linear infinite; }
+    .ai-orb b {
+      position: absolute;
+      inset: 30px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #e0e7ff, #6366f1 45%, #312e81 100%);
+      box-shadow: 0 0 26px rgba(99, 102, 241, 0.9), 0 0 60px rgba(34, 211, 238, 0.35);
+      animation: breathe 2.4s ease-in-out infinite;
+    }
+    .ai-orb em {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 6px;
+      height: 6px;
+      margin: -3px;
+      border-radius: 50%;
+      background: #67e8f9;
+      box-shadow: 0 0 10px #22d3ee;
+      animation: ai-orbit 3s linear infinite;
+    }
+    .ai-orb em:nth-of-type(2) { animation-duration: 4.4s; animation-direction: reverse; background: #c4b5fd; box-shadow: 0 0 10px #a855f7; }
+    .ai-idle p { margin: 0; max-width: 260px; font-size: 12.5px; line-height: 1.5; color: #aab3c8; }
+
+    .ai-scan { position: absolute; inset: 0; z-index: 2; pointer-events: none; opacity: 0; transition: opacity 0.3s ease; }
+    .ai-stage[data-state="thinking"] .ai-scan { opacity: 1; }
+    .ai-scan::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 70px;
+      background: linear-gradient(180deg, transparent, rgba(34, 211, 238, 0.22) 85%, rgba(165, 243, 252, 0.9) 100%);
+      border-bottom: 1px solid #a5f3fc;
+      box-shadow: 0 8px 22px rgba(34, 211, 238, 0.55);
+      animation: ai-scanline 2.2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+    }
+    .ai-scan::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(rgba(34, 211, 238, 0.09) 1px, transparent 1px) 0 0 / 100% 14px,
+        radial-gradient(120% 100% at 50% 50%, transparent 55%, rgba(8, 10, 30, 0.65));
+      animation: ai-grid 1.6s ease-in-out infinite alternate;
+    }
+    .ai-box {
+      position: absolute;
+      z-index: 3;
+      border: 1.5px solid var(--ai-accent);
+      border-radius: 6px;
+      background: rgba(34, 211, 238, 0.08);
+      box-shadow: 0 0 14px rgba(34, 211, 238, 0.45);
+      animation: ai-box 1.7s ease both;
+    }
+    .ai-box span {
+      position: absolute;
+      top: -18px;
+      left: -1px;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+      color: #04121a;
+      background: var(--ai-accent);
+    }
+    .ai-box.bear { border-color: var(--ai-down); background: rgba(251, 113, 133, 0.08); box-shadow: 0 0 14px rgba(251, 113, 133, 0.45); }
+    .ai-box.bear span { background: var(--ai-down); }
+    .ai-flash { position: absolute; inset: 0; z-index: 4; background: #fff; opacity: 0; pointer-events: none; }
+    .ai-flash.on { animation: ai-flash 0.55s ease-out; }
+    .ai-oops {
+      position: absolute;
+      inset: 0;
+      z-index: 5;
+      display: none;
+      place-items: center;
+      align-content: center;
+      gap: 8px;
+      padding: 20px;
+      text-align: center;
+      background: rgba(10, 6, 16, 0.82);
+      backdrop-filter: blur(3px);
+    }
+    .ai-stage[data-state="error"] .ai-oops { display: grid; animation: fade-in 0.3s ease both; }
+    .ai-oops svg { width: 34px; height: 34px; fill: none; stroke: var(--ai-down); stroke-width: 1.8; stroke-linecap: round; animation: shake 0.5s ease 2; }
+    .ai-oops p { margin: 0; font-size: 12.5px; line-height: 1.45; color: #fecdd3; }
+
+    .ai-steps {
+      --p: 0;
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      margin: 12px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+    .ai-steps::before, .ai-steps::after {
+      content: "";
+      position: absolute;
+      top: 9px;
+      left: 12.5%;
+      height: 2px;
+      border-radius: 2px;
+    }
+    .ai-steps::before { right: 12.5%; background: rgba(255, 255, 255, 0.08); }
+    .ai-steps::after {
+      width: calc(75% * var(--p));
+      background: linear-gradient(90deg, #6366f1, #22d3ee);
+      box-shadow: 0 0 10px rgba(34, 211, 238, 0.7);
+      transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .ai-steps li { position: relative; z-index: 1; display: grid; justify-items: center; gap: 6px; font-size: 10.5px; color: #6b7387; transition: color 0.3s ease; }
+    .ai-steps li i {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 2px solid #2a3350;
+      background: #0b1020;
+      transition: all 0.35s ease;
+    }
+    .ai-steps li.active { color: #e0f2fe; }
+    .ai-steps li.active i { border-color: var(--ai-accent); background: radial-gradient(circle, #a5f3fc 0 3px, #0b1020 4px); box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.16), 0 0 14px rgba(34, 211, 238, 0.7); animation: pulse 1.2s ease-in-out infinite; }
+    .ai-steps li.done { color: #a5b4fc; }
+    .ai-steps li.done i { border-color: #6366f1; background: #6366f1 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.2' stroke-linecap='round'%3E%3Cpath d='M6 12.5l4 4 8-9'/%3E%3C/svg%3E") center / 12px no-repeat; }
+    .ai-status { min-height: 18px; margin: 10px 0 0; font-size: 12.5px; text-align: center; color: #9aa6bd; }
+    .ai-status.live {
+      background: linear-gradient(90deg, #9aa6bd 0%, #e0f2fe 45%, #9aa6bd 90%);
+      background-size: 250% 100%;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      animation: shimmer 1.8s linear infinite;
+    }
+
+    .ai-result { display: grid; gap: 10px; }
+    .ai-result[hidden] { display: none; }
+    .ai-verdict {
+      --c: var(--ai-wait);
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px;
+      overflow: hidden;
+      border-radius: 18px;
+      border: 1px solid color-mix(in srgb, var(--c) 40%, transparent);
+      background:
+        radial-gradient(110% 120% at 0% 0%, color-mix(in srgb, var(--c) 26%, transparent), transparent 60%),
+        rgba(255, 255, 255, 0.03);
+      box-shadow: 0 0 34px color-mix(in srgb, var(--c) 22%, transparent);
+    }
+    .ai-verdict[data-dir="UP"] { --c: var(--ai-up); }
+    .ai-verdict[data-dir="DOWN"] { --c: var(--ai-down); }
+    .ai-verdict.pop { animation: ai-pop 0.7s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+    .ai-arrow {
+      width: 54px;
+      height: 54px;
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      border-radius: 16px;
+      color: #06110c;
+      background: var(--c);
+      box-shadow: 0 10px 26px color-mix(in srgb, var(--c) 55%, transparent);
+    }
+    .ai-arrow svg { width: 30px; height: 30px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+    .ai-verdict[data-dir="UP"] .ai-arrow svg { animation: ai-bob-up 1.6s ease-in-out infinite; }
+    .ai-verdict[data-dir="DOWN"] .ai-arrow svg { transform: rotate(180deg); animation: ai-bob-down 1.6s ease-in-out infinite; }
+    .ai-verdict[data-dir="WAIT"] .ai-arrow svg { animation: ai-wait 2s ease-in-out infinite; }
+    .ai-dir { flex: 1; min-width: 0; }
+    .ai-dir small { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #8b93a7; }
+    .ai-dir b { display: block; margin: 2px 0 3px; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; color: var(--c); text-shadow: 0 0 22px color-mix(in srgb, var(--c) 60%, transparent); }
+    .ai-dir span { display: block; font-size: 12px; color: #c5cedd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ai-ring { position: relative; width: 78px; height: 78px; flex: 0 0 auto; }
+    .ai-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .ai-ring circle { fill: none; stroke-width: 7; }
+    .ai-ring .bg { stroke: rgba(255, 255, 255, 0.07); }
+    .ai-ring .fg {
+      stroke: var(--c);
+      stroke-linecap: round;
+      stroke-dasharray: 213.6;
+      stroke-dashoffset: 213.6;
+      filter: drop-shadow(0 0 6px var(--c));
+      transition: stroke-dashoffset 1.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    .ai-ring div { position: absolute; inset: 0; display: grid; place-items: center; align-content: center; }
+    .ai-ring b { font-size: 19px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .ai-ring small { font-size: 9px; color: #8b93a7; }
+
+    .ai-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .ai-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      height: 28px;
+      padding: 0 10px;
+      border-radius: 999px;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #d4dbea;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      animation: rise 0.5s ease both;
+    }
+    .ai-chip.up { color: #a7f3d0; border-color: rgba(52, 211, 153, 0.3); }
+    .ai-chip.down { color: #fecdd3; border-color: rgba(251, 113, 133, 0.3); }
+    .ai-chip.warn { color: #fde68a; border-color: rgba(251, 191, 36, 0.3); }
+    .ai-summary {
+      margin: 0;
+      padding: 12px 14px;
+      border-radius: 14px;
+      font-size: 13px;
+      line-height: 1.55;
+      color: #dbe3f1;
+      background: rgba(255, 255, 255, 0.035);
+      border-left: 3px solid #6366f1;
+    }
+    .ai-summary.typing::after { content: "▍"; color: var(--ai-accent); animation: blink-eye 0.8s steps(1) infinite; }
+    .ai-signals { display: grid; gap: 8px; }
+    .ai-sig { padding: 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.03); animation: rise 0.5s ease both; }
+    .ai-sig-top { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 650; }
+    .ai-sig-top span:first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ai-bias { padding: 2px 7px; border-radius: 6px; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+    .ai-sig[data-bias="bull"] .ai-bias { color: #052e1f; background: var(--ai-up); }
+    .ai-sig[data-bias="bear"] .ai-bias { color: #3a0a14; background: var(--ai-down); }
+    .ai-sig[data-bias="neutral"] .ai-bias { color: #3b2a04; background: var(--ai-wait); }
+    .ai-meter { height: 5px; margin: 8px 0 6px; border-radius: 5px; background: rgba(255, 255, 255, 0.07); overflow: hidden; }
+    .ai-meter i { display: block; height: 100%; width: 0; border-radius: inherit; transition: width 1s cubic-bezier(0.2, 0.8, 0.2, 1); }
+    .ai-sig[data-bias="bull"] .ai-meter i { background: linear-gradient(90deg, #059669, var(--ai-up)); }
+    .ai-sig[data-bias="bear"] .ai-meter i { background: linear-gradient(90deg, #be123c, var(--ai-down)); }
+    .ai-sig[data-bias="neutral"] .ai-meter i { background: linear-gradient(90deg, #b45309, var(--ai-wait)); }
+    .ai-sig p { margin: 0; font-size: 11.5px; line-height: 1.4; color: #9aa6bd; }
+    .ai-levels { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .ai-levels[hidden] { display: none; }
+    .ai-level { padding: 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.03); animation: rise 0.5s ease both; }
+    .ai-level small { display: block; font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: #8b93a7; }
+    .ai-level b { display: block; margin-top: 3px; font-size: 15px; font-variant-numeric: tabular-nums; }
+    .ai-level.sup b { color: var(--ai-up); }
+    .ai-level.res b { color: var(--ai-down); }
+
+    .ai-run {
+      position: relative;
+      flex: 0 0 auto;
+      height: 50px;
+      overflow: hidden;
+      border-radius: 15px;
+      font-size: 14.5px;
+      color: #fff;
+      background: linear-gradient(135deg, #6366f1 0%, #3b82f6 50%, #22d3ee 100%);
+      box-shadow: 0 12px 30px rgba(59, 130, 246, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    }
+    .ai-run::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.35) 50%, transparent 70%);
+      transform: translateX(-120%);
+      animation: upd-sheen 3s ease-in-out infinite;
+    }
+    .ai-run:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 16px 36px rgba(59, 130, 246, 0.55); }
+    .ai-run:disabled { cursor: progress; filter: saturate(0.7); }
+    .ai-run svg { width: 18px; height: 18px; }
+    .ai-run .ai-spin { display: none; width: 18px; height: 18px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.35); border-top-color: #fff; animation: spin 0.8s linear infinite; }
+    .ai-run.busy .ai-spin { display: block; }
+    .ai-run.busy svg { display: none; }
+    .ai-run.vip-only { background: linear-gradient(135deg, #f59e0b, #f97316 55%, #ec4899); box-shadow: 0 12px 30px rgba(249, 115, 22, 0.4); }
+    .ai-run.nudge { animation: shake 0.4s ease 2; }
+    .ai-meta { display: flex; justify-content: space-between; gap: 10px; font-size: 11px; color: #6b7387; }
+
+    .ai-history-title { margin: 4px 0 0; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #6b7387; }
+    .ai-history { display: grid; gap: 6px; }
+    .ai-hist {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      height: auto;
+      padding: 6px;
+      border-radius: 12px;
+      text-align: left;
+      font-weight: 500;
+      color: #c5cedd;
+      background: rgba(255, 255, 255, 0.03);
+      animation: rise 0.4s ease both;
+    }
+    .ai-hist:hover { background: rgba(255, 255, 255, 0.07); transform: none; }
+    .ai-hist img { width: 64px; height: 40px; flex: 0 0 auto; border-radius: 8px; object-fit: cover; }
+    .ai-hist div { flex: 1; min-width: 0; display: grid; gap: 2px; }
+    .ai-hist b { font-size: 12.5px; }
+    .ai-hist b.UP { color: var(--ai-up); }
+    .ai-hist b.DOWN { color: var(--ai-down); }
+    .ai-hist b.WAIT { color: var(--ai-wait); }
+    .ai-hist small { font-size: 11px; color: #8b93a7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ai-empty { margin: 0; font-size: 12px; color: #5d657a; }
+    .ai-note { margin: 2px 0 0; font-size: 10.5px; line-height: 1.45; color: #5d657a; text-align: center; }
+
+    @keyframes ai-panel-in { from { opacity: 0; transform: translateX(26px); } to { opacity: 1; transform: none; } }
+    @keyframes ai-particle {
+      0% { transform: translateY(105vh) scale(0.6); opacity: 0; }
+      10% { opacity: 0.9; }
+      90% { opacity: 0.6; }
+      100% { transform: translateY(-10vh) scale(1.2); opacity: 0; }
+    }
+    @keyframes ai-orbit { from { transform: rotate(0deg) translateX(46px); } to { transform: rotate(360deg) translateX(46px); } }
+    @keyframes ai-shot-in { from { opacity: 0; transform: scale(1.08); filter: blur(8px) brightness(1.6); } to { opacity: 1; transform: none; } }
+    @keyframes ai-flash { 0% { opacity: 0.85; } 100% { opacity: 0; } }
+    @keyframes ai-scanline { 0% { top: -70px; } 100% { top: 100%; } }
+    @keyframes ai-grid { from { opacity: 0.55; } to { opacity: 1; } }
+    @keyframes ai-corner { 50% { transform: scale(1.18); opacity: 1; } }
+    @keyframes ai-box {
+      0% { opacity: 0; transform: scale(1.35); }
+      18% { opacity: 1; transform: scale(1); }
+      75% { opacity: 1; }
+      100% { opacity: 0; transform: scale(0.96); }
+    }
+    @keyframes ai-pop { from { opacity: 0; transform: translateY(10px) scale(0.9); } to { opacity: 1; transform: none; } }
+    @keyframes ai-bob-up { 50% { transform: translateY(-4px); } }
+    @keyframes ai-bob-down { 50% { transform: rotate(180deg) translateY(-4px); } }
+    @keyframes ai-wait { 50% { transform: scale(0.85); opacity: 0.7; } }
+
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
         animation: none !important;
@@ -1840,7 +2269,7 @@
     </button>
     <form id="nav" class="omnibox">
       <span id="tb-secure" class="secure"><svg class="icon" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span>
-      <input id="url" value="https://youlink.biz/3S2M" spellcheck="false" autocomplete="off" aria-label="URL">
+      <input id="url" value="https://broker-qx.pro/?lid=2168373" spellcheck="false" autocomplete="off" aria-label="URL">
       <button class="go-inline" type="submit" data-i18n-title="open" title="Открыть"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
     </form>
     <button id="support" class="support" type="button"><svg viewBox="0 0 24 24"><path d="M22 2 11 13"/><path d="m22 2-7 20-4-9-9-4z"/></svg><span data-i18n="support">Поддержка</span></button>
@@ -1918,7 +2347,7 @@
       <div class="splash-title">Q-bot PLUS</div>
       <div id="splash-status" class="splash-status"></div>
       <div class="splash-bar"><i id="splash-fill"></i></div>
-      <div class="splash-meta"><span id="splash-host">youlink.biz</span><span id="splash-percent">0%</span></div>
+      <div class="splash-meta"><span id="splash-host">broker-qx.pro</span><span id="splash-percent">0%</span></div>
       <div class="steps">
         <span class="step" data-step="connect"><i><svg class="icon" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></i><span data-i18n="step_platform">Платформа</span></span>
         <span class="step" data-step="page"><i><svg class="icon" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg></i><span data-i18n="step_page">Терминал</span></span>
@@ -2140,6 +2569,71 @@
       <p class="sig-label" data-i18n="sig_recent">ПОСЛЕДНИЕ 10 СИГНАЛОВ</p>
       <div id="sig-list" class="sig-list"></div>
     </section>
+    <section id="ai-panel" class="ai-panel" hidden aria-labelledby="ai-title">
+      <div class="ai-bg" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="ai-head">
+        <span class="ai-logo" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 9.5 9.5 3 12l6.5 2.5L12 21l2.5-6.5L21 12l-6.5-2.5z"/></svg></span>
+        <div class="ai-head-text">
+          <h2 id="ai-title" data-i18n="ai_title">AI-анализ графика</h2>
+          <small id="ai-model">Qwen 3.8 Flash · OpenRouter</small>
+        </div>
+        <button id="ai-close" class="ai-close" type="button" data-i18n-title="close" title="Закрыть"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
+
+      <div id="ai-stage" class="ai-stage" data-state="idle">
+        <div id="ai-frame" class="ai-frame">
+          <img id="ai-shot" alt="">
+          <div class="ai-idle">
+            <div class="ai-orb" aria-hidden="true"><i></i><i></i><i></i><b></b><em></em><em></em></div>
+            <p data-i18n="ai_idle">Откройте нужную пару слева и нажмите «Анализировать» — нейросеть изучит свечи и даст прогноз.</p>
+          </div>
+          <div class="ai-scan" aria-hidden="true"></div>
+          <div id="ai-flash" class="ai-flash" aria-hidden="true"></div>
+          <div class="ai-oops"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5v.01"/></svg><p id="ai-oops-text"></p></div>
+          <span class="ai-corner tl"></span><span class="ai-corner tr"></span><span class="ai-corner bl"></span><span class="ai-corner br"></span>
+        </div>
+        <ol id="ai-steps" class="ai-steps">
+          <li><i></i><span data-i18n="ai_step_shot">Снимок</span></li>
+          <li><i></i><span data-i18n="ai_step_send">Отправка</span></li>
+          <li><i></i><span data-i18n="ai_step_think">Анализ</span></li>
+          <li><i></i><span data-i18n="ai_step_done">Готово</span></li>
+        </ol>
+        <p id="ai-status" class="ai-status" role="status" aria-live="polite"></p>
+      </div>
+
+      <div id="ai-result" class="ai-result" hidden>
+        <div id="ai-verdict" class="ai-verdict" data-dir="WAIT">
+          <div class="ai-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5"/></svg></div>
+          <div class="ai-dir">
+            <small data-i18n="ai_forecast">Прогноз</small>
+            <b id="ai-dir-text"></b>
+            <span id="ai-pair"></span>
+          </div>
+          <div class="ai-ring">
+            <svg viewBox="0 0 80 80"><circle class="bg" cx="40" cy="40" r="34"/><circle id="ai-ring" class="fg" cx="40" cy="40" r="34"/></svg>
+            <div><b id="ai-conf">0%</b><small data-i18n="ai_confidence">уверенность</small></div>
+          </div>
+        </div>
+        <div id="ai-chips" class="ai-chips"></div>
+        <p id="ai-summary" class="ai-summary"></p>
+        <div id="ai-signals" class="ai-signals"></div>
+        <div id="ai-levels" class="ai-levels">
+          <div class="ai-level sup"><small data-i18n="ai_support">Поддержка</small><b id="ai-support">—</b></div>
+          <div class="ai-level res"><small data-i18n="ai_resistance">Сопротивление</small><b id="ai-resistance">—</b></div>
+        </div>
+      </div>
+
+      <button id="ai-run" class="ai-run" type="button">
+        <svg viewBox="0 0 24 24"><path d="M12 3 9.5 9.5 3 12l6.5 2.5L12 21l2.5-6.5L21 12l-6.5-2.5z"/></svg>
+        <i class="ai-spin" aria-hidden="true"></i>
+        <span id="ai-run-text">Анализировать график</span>
+      </button>
+      <div class="ai-meta"><span id="ai-left"></span><span id="ai-time"></span></div>
+
+      <p class="ai-history-title" data-i18n="ai_history">История анализов</p>
+      <div id="ai-history" class="ai-history"></div>
+      <p class="ai-note" data-i18n="ai_note">Прогноз нейросети — не финансовая рекомендация. Торговля связана с риском потери средств.</p>
+    </section>
     <div id="upd-toast" class="upd-toast" role="status" aria-live="polite" hidden>
       <div class="upd-inner">
         <div class="upd-row">
@@ -2204,6 +2698,29 @@
         reinvest: "Реинвест прибыли", reinvest_d: "Увеличивать ставку из прибыли",
         start: "Запустить робота", starting: "Запуск...", halt: "Остановить робота",
         ai: "AI-анализ", signals: "Сигналы", lessons: "Инструкция", support: "Поддержка",
+        ai_title: "AI-анализ графика", ai_idle: "Откройте нужную пару слева и нажмите «Анализировать» — нейросеть изучит свечи и даст прогноз.",
+        ai_step_shot: "Снимок", ai_step_send: "Отправка", ai_step_think: "Анализ", ai_step_done: "Готово",
+        ai_run: "Анализировать график", ai_run_busy: "Нейросеть думает…", ai_run_locked: "AI-анализ доступен с VIP",
+        ai_st_capture: "Делаем снимок графика…", ai_st_done: "Анализ готов",
+        ai_think: "Отправляем график нейросети…|Изучаем последние свечи…|Ищем уровни поддержки и сопротивления…|Оцениваем силу тренда…|Проверяем свечные паттерны…|Считаем уверенность прогноза…",
+        ai_boxes: "ПАТТЕРН|УРОВЕНЬ|ИМПУЛЬС|ТРЕНД|ОТСКОК|ПРОБОЙ",
+        ai_forecast: "Прогноз", ai_confidence: "уверенность", ai_dir_up: "ВВЕРХ", ai_dir_down: "ВНИЗ", ai_dir_wait: "ЖДАТЬ", ai_dir_none: "НЕТ ГРАФИКА",
+        ai_pair_unknown: "Пара не определена", ai_expiry: "Экспирация {n} мин",
+        ai_trend_up: "📈 Восходящий тренд", ai_trend_down: "📉 Нисходящий тренд", ai_trend_sideways: "↔ Боковик",
+        ai_risk_low: "🛡 Низкий риск", ai_risk_medium: "⚠ Средний риск", ai_risk_high: "🔥 Высокий риск",
+        ai_bias_bull: "быки", ai_bias_bear: "медведи", ai_bias_neutral: "нейтрально",
+        ai_support: "Поддержка", ai_resistance: "Сопротивление",
+        ai_not_chart: "На снимке не видно графика цены. Откройте торговую страницу с графиком и повторите.",
+        ai_history: "История анализов", ai_history_empty: "Здесь появятся ваши прошлые анализы.", ai_from_history: "Анализ из истории · {time}",
+        ai_took: "За {s} с", ai_left: "Осталось сегодня: {n}",
+        ai_note: "Прогноз нейросети — не финансовая рекомендация. Торговля связана с риском потери средств.",
+        ai_err_capture: "Не удалось сделать снимок графика. Обновите страницу брокера и попробуйте снова.",
+        ai_err_no_page: "Сначала откройте страницу брокера с графиком.",
+        ai_err_limit: "Дневной лимит анализов исчерпан. Новые станут доступны завтра.",
+        ai_err_upstream: "Нейросеть сейчас перегружена. Попробуйте через минуту.",
+        ai_err_timeout: "Нейросеть отвечает слишком долго. Попробуйте ещё раз.",
+        ai_err_network: "Нет связи с сервером анализа. Проверьте интернет или VPN.",
+        ai_err_bad_image: "Снимок получился некорректным. Попробуйте ещё раз.", close: "Закрыть",
         sig_active: "АКТИВНЫЙ", sig_recent: "ПОСЛЕДНИЕ 10 СИГНАЛОВ", sig_up: "ВВЕРХ", sig_down: "ВНИЗ",
         sig_open: "Открыть", sig_strength: "Сила", sig_empty: "Сигналов сейчас нет", sig_error: "Не удалось загрузить сигналы", sig_ago: "{n} мин назад", sig_now: "только что", sig_sec: "с", sig_until: "До обновления",
         buy_vip: "Купить VIP", vip_active: "VIP активен",
@@ -2264,6 +2781,29 @@
         reinvest: "Reinvest profit", reinvest_d: "Increase the stake from profit",
         start: "Start robot", starting: "Starting...", halt: "Stop robot",
         ai: "AI analysis", signals: "Signals", lessons: "Guide", support: "Support",
+        ai_title: "AI chart analysis", ai_idle: "Open the pair you need on the left and press “Analyze” — the AI will study the candles and give a forecast.",
+        ai_step_shot: "Snapshot", ai_step_send: "Upload", ai_step_think: "Analysis", ai_step_done: "Done",
+        ai_run: "Analyze chart", ai_run_busy: "AI is thinking…", ai_run_locked: "AI analysis is a VIP feature",
+        ai_st_capture: "Taking a snapshot of the chart…", ai_st_done: "Analysis ready",
+        ai_think: "Sending the chart to the AI…|Studying the latest candles…|Looking for support and resistance…|Measuring trend strength…|Checking candlestick patterns…|Calculating confidence…",
+        ai_boxes: "PATTERN|LEVEL|MOMENTUM|TREND|BOUNCE|BREAKOUT",
+        ai_forecast: "Forecast", ai_confidence: "confidence", ai_dir_up: "UP", ai_dir_down: "DOWN", ai_dir_wait: "WAIT", ai_dir_none: "NO CHART",
+        ai_pair_unknown: "Pair not detected", ai_expiry: "Expiry {n} min",
+        ai_trend_up: "📈 Uptrend", ai_trend_down: "📉 Downtrend", ai_trend_sideways: "↔ Sideways",
+        ai_risk_low: "🛡 Low risk", ai_risk_medium: "⚠ Medium risk", ai_risk_high: "🔥 High risk",
+        ai_bias_bull: "bulls", ai_bias_bear: "bears", ai_bias_neutral: "neutral",
+        ai_support: "Support", ai_resistance: "Resistance",
+        ai_not_chart: "No price chart is visible in the snapshot. Open the trading page with a chart and try again.",
+        ai_history: "Analysis history", ai_history_empty: "Your past analyses will appear here.", ai_from_history: "From history · {time}",
+        ai_took: "In {s} s", ai_left: "Left today: {n}",
+        ai_note: "The AI forecast is not financial advice. Trading involves the risk of losing money.",
+        ai_err_capture: "Could not take a snapshot of the chart. Reload the broker page and try again.",
+        ai_err_no_page: "Open the broker page with a chart first.",
+        ai_err_limit: "The daily analysis limit is used up. New ones will be available tomorrow.",
+        ai_err_upstream: "The AI is overloaded right now. Try again in a minute.",
+        ai_err_timeout: "The AI is taking too long. Please try again.",
+        ai_err_network: "No connection to the analysis server. Check your internet or VPN.",
+        ai_err_bad_image: "The snapshot came out wrong. Please try again.", close: "Close",
         sig_active: "ACTIVE", sig_recent: "LAST 10 SIGNALS", sig_up: "UP", sig_down: "DOWN",
         sig_open: "Open", sig_strength: "Strength", sig_empty: "No signals right now", sig_error: "Could not load signals", sig_ago: "{n} min ago", sig_now: "just now", sig_sec: "s", sig_until: "Until refresh",
         buy_vip: "Get VIP", vip_active: "VIP active",
@@ -2324,6 +2864,29 @@
         reinvest: "Reinvestir lucro", reinvest_d: "Aumentar a entrada com o lucro",
         start: "Iniciar robô", starting: "Iniciando...", halt: "Parar robô",
         ai: "Análise IA", signals: "Sinais", lessons: "Instruções", support: "Suporte",
+        ai_title: "Análise IA do gráfico", ai_idle: "Abra o par desejado à esquerda e toque em “Analisar” — a IA estuda as velas e dá uma previsão.",
+        ai_step_shot: "Captura", ai_step_send: "Envio", ai_step_think: "Análise", ai_step_done: "Pronto",
+        ai_run: "Analisar gráfico", ai_run_busy: "A IA está pensando…", ai_run_locked: "Análise IA disponível no VIP",
+        ai_st_capture: "Capturando o gráfico…", ai_st_done: "Análise pronta",
+        ai_think: "Enviando o gráfico para a IA…|Estudando as últimas velas…|Procurando suporte e resistência…|Medindo a força da tendência…|Verificando padrões de velas…|Calculando a confiança…",
+        ai_boxes: "PADRÃO|NÍVEL|IMPULSO|TENDÊNCIA|REPIQUE|ROMPIMENTO",
+        ai_forecast: "Previsão", ai_confidence: "confiança", ai_dir_up: "ACIMA", ai_dir_down: "ABAIXO", ai_dir_wait: "AGUARDAR", ai_dir_none: "SEM GRÁFICO",
+        ai_pair_unknown: "Par não identificado", ai_expiry: "Expiração {n} min",
+        ai_trend_up: "📈 Tendência de alta", ai_trend_down: "📉 Tendência de baixa", ai_trend_sideways: "↔ Lateral",
+        ai_risk_low: "🛡 Risco baixo", ai_risk_medium: "⚠ Risco médio", ai_risk_high: "🔥 Risco alto",
+        ai_bias_bull: "touros", ai_bias_bear: "ursos", ai_bias_neutral: "neutro",
+        ai_support: "Suporte", ai_resistance: "Resistência",
+        ai_not_chart: "Não há gráfico de preço na captura. Abra a página de negociação com o gráfico e tente de novo.",
+        ai_history: "Histórico de análises", ai_history_empty: "Suas análises anteriores aparecerão aqui.", ai_from_history: "Do histórico · {time}",
+        ai_took: "Em {s} s", ai_left: "Restam hoje: {n}",
+        ai_note: "A previsão da IA não é recomendação financeira. Negociar envolve risco de perder dinheiro.",
+        ai_err_capture: "Não foi possível capturar o gráfico. Recarregue a página da corretora e tente de novo.",
+        ai_err_no_page: "Abra primeiro a página da corretora com o gráfico.",
+        ai_err_limit: "O limite diário de análises acabou. Novas estarão disponíveis amanhã.",
+        ai_err_upstream: "A IA está sobrecarregada agora. Tente em um minuto.",
+        ai_err_timeout: "A IA está demorando demais. Tente novamente.",
+        ai_err_network: "Sem conexão com o servidor de análise. Verifique a internet ou a VPN.",
+        ai_err_bad_image: "A captura saiu incorreta. Tente novamente.", close: "Fechar",
         sig_active: "ATIVO", sig_recent: "ÚLTIMOS 10 SINAIS", sig_up: "ACIMA", sig_down: "ABAIXO",
         sig_open: "Abrir", sig_strength: "Força", sig_empty: "Não há sinais agora", sig_error: "Não foi possível carregar os sinais", sig_ago: "há {n} min", sig_now: "agora", sig_sec: "s", sig_until: "Até atualizar",
         buy_vip: "Comprar VIP", vip_active: "VIP ativo",
@@ -2412,6 +2975,11 @@
       const splashStage = $("splash-status").dataset.stage;
       if (splashStage) $("splash-status").textContent = t("splash_" + splashStage);
       renderUpdate();
+      if (window.qbotAi) {
+        updateAiLock();
+        if (!$("ai-panel").hidden) renderAiHistory();
+        if (window.qbotAi.current && !window.qbotAi.busy) renderAiResult(window.qbotAi.current, false);
+      }
       renderGateText();
       if (proxyInfo) renderProxy();
       renderDomList();
@@ -2661,6 +3229,7 @@
     function applyVip(vip) {
       if (vip === isVip) return;
       isVip = vip;
+      updateAiLock();
       $("mode").textContent = t(vip ? "vip_access" : "free");
       $("mode").classList.toggle("vip", vip);
       setLabel("vip", t(vip ? "vip_active" : "buy_vip"));
@@ -3073,10 +3642,324 @@
       await window.qbot.openSignal({ symbol: button.dataset.pair, way: button.dataset.way });
       button.disabled = false;
     });
-    $("ai").addEventListener("click", async () => {
-      const result = await window.qbot.ai();
-      if (result && result.error) showError(result.error);
-    });
+    // ——— AI-анализ ———
+    const AI_HISTORY_KEY = "qbot_ai_history";
+    const AI_RING = 213.6;
+    window.qbotAi = { busy: false, current: null, thinkTimer: null, boxTimer: null, typeTimer: null, countFrame: 0 };
+
+    function aiHistory() {
+      try {
+        const list = JSON.parse(localStorage.getItem(AI_HISTORY_KEY) || "[]");
+        return Array.isArray(list) ? list : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveAiHistory(list) {
+      try {
+        localStorage.setItem(AI_HISTORY_KEY, JSON.stringify(list.slice(0, 6)));
+      } catch (e) {}
+    }
+
+    function prettyModel(id) {
+      const name = String(id || "qwen/qwen3.8-flash").split("/").pop();
+      return name.replace(/^qwen/i, "Qwen ").replace(/-/g, " ").replace(/\b([a-z])/g, (m) => m.toUpperCase()) + " · OpenRouter";
+    }
+
+    function aiSetStep(step) {
+      $("ai-steps").style.setProperty("--p", String(Math.max(0, Math.min(step, 3)) / 3));
+      $("ai-steps").querySelectorAll("li").forEach((li, i) => {
+        li.classList.toggle("done", i < step || step >= 4);
+        li.classList.toggle("active", i === step && step < 4);
+      });
+    }
+
+    function aiStatus(text, live) {
+      $("ai-status").textContent = text || "";
+      $("ai-status").classList.toggle("live", !!live);
+    }
+
+    function updateAiLock() {
+      const run = $("ai-run");
+      if (!run || window.qbotAi?.busy) return;
+      const locked = isVip !== true;
+      run.classList.toggle("vip-only", locked);
+      $("ai-run-text").textContent = t(locked ? "ai_run_locked" : "ai_run");
+    }
+
+    // Short-lived boxes that "find" patterns on the chart while the model is thinking.
+    function aiSpawnBox() {
+      const frame = $("ai-frame");
+      const labels = t("ai_boxes").split("|");
+      const box = document.createElement("div");
+      box.className = "ai-box" + (Math.random() < 0.4 ? " bear" : "");
+      const w = 18 + Math.random() * 22;
+      const h = 16 + Math.random() * 30;
+      box.style.left = 6 + Math.random() * (88 - w) + "%";
+      box.style.top = 14 + Math.random() * (78 - h) + "%";
+      box.style.width = w + "%";
+      box.style.height = h + "%";
+      const label = document.createElement("span");
+      label.textContent = labels[Math.floor(Math.random() * labels.length)];
+      box.appendChild(label);
+      frame.appendChild(box);
+      setTimeout(() => box.remove(), 1700);
+    }
+
+    function aiStartThinking() {
+      const phrases = t("ai_think").split("|");
+      let i = 0;
+      aiStatus(phrases[0], true);
+      clearInterval(window.qbotAi.thinkTimer);
+      clearInterval(window.qbotAi.boxTimer);
+      window.qbotAi.thinkTimer = setInterval(() => aiStatus(phrases[++i % phrases.length], true), 1700);
+      window.qbotAi.boxTimer = setInterval(aiSpawnBox, 650);
+    }
+
+    function aiStopThinking() {
+      clearInterval(window.qbotAi.thinkTimer);
+      clearInterval(window.qbotAi.boxTimer);
+      $("ai-frame").querySelectorAll(".ai-box").forEach((box) => box.remove());
+    }
+
+    function aiTypewriter(el, text, animate) {
+      clearInterval(window.qbotAi.typeTimer);
+      if (!animate) {
+        el.textContent = text;
+        el.classList.remove("typing");
+        return;
+      }
+      let n = 0;
+      el.textContent = "";
+      el.classList.add("typing");
+      window.qbotAi.typeTimer = setInterval(() => {
+        n += 2;
+        el.textContent = text.slice(0, n);
+        if (n >= text.length) {
+          clearInterval(window.qbotAi.typeTimer);
+          el.classList.remove("typing");
+        }
+      }, 18);
+    }
+
+    function aiCountUp(target, animate) {
+      cancelAnimationFrame(window.qbotAi.countFrame);
+      const ring = $("ai-ring");
+      const out = $("ai-conf");
+      if (!animate) {
+        ring.style.strokeDashoffset = String(AI_RING * (1 - target / 100));
+        out.textContent = target + "%";
+        return;
+      }
+      ring.style.strokeDashoffset = String(AI_RING);
+      requestAnimationFrame(() => { ring.style.strokeDashoffset = String(AI_RING * (1 - target / 100)); });
+      const started = performance.now();
+      const step = (now) => {
+        const k = Math.min(1, (now - started) / 1100);
+        out.textContent = Math.round(target * (1 - Math.pow(1 - k, 3))) + "%";
+        if (k < 1) window.qbotAi.countFrame = requestAnimationFrame(step);
+      };
+      window.qbotAi.countFrame = requestAnimationFrame(step);
+    }
+
+    function aiChip(text, tone, delay) {
+      const chip = document.createElement("span");
+      chip.className = "ai-chip" + (tone ? " " + tone : "");
+      chip.textContent = text;
+      chip.style.animationDelay = delay + "ms";
+      return chip;
+    }
+
+    function renderAiResult(r, animate) {
+      window.qbotAi.current = r;
+      $("ai-result").hidden = false;
+      const verdict = $("ai-verdict");
+      verdict.dataset.dir = r.direction;
+      verdict.classList.remove("pop");
+      if (animate) { void verdict.offsetWidth; verdict.classList.add("pop"); }
+      $("ai-dir-text").textContent = t(r.isChart ? "ai_dir_" + r.direction.toLowerCase() : "ai_dir_none");
+      $("ai-pair").textContent = [r.pair, r.timeframe].filter(Boolean).join(" · ") || t("ai_pair_unknown");
+      aiCountUp(r.confidence, animate);
+
+      const chips = $("ai-chips");
+      chips.replaceChildren(
+        aiChip("⏱ " + t("ai_expiry").replace("{n}", r.expiry), "", 150),
+        aiChip(t("ai_trend_" + r.trend), r.trend === "up" ? "up" : r.trend === "down" ? "down" : "", 250),
+        aiChip(t("ai_risk_" + r.risk), r.risk === "high" ? "down" : r.risk === "medium" ? "warn" : "up", 350)
+      );
+      aiTypewriter($("ai-summary"), r.isChart ? r.summary : t("ai_not_chart"), animate);
+
+      const list = $("ai-signals");
+      list.replaceChildren();
+      r.signals.forEach((sig, i) => {
+        const row = document.createElement("div");
+        row.className = "ai-sig";
+        row.dataset.bias = sig.bias;
+        row.style.animationDelay = 300 + i * 120 + "ms";
+        const top = document.createElement("div");
+        top.className = "ai-sig-top";
+        const name = document.createElement("span");
+        name.textContent = sig.name;
+        const bias = document.createElement("span");
+        bias.className = "ai-bias";
+        bias.textContent = t("ai_bias_" + sig.bias);
+        top.append(name, bias);
+        const meter = document.createElement("div");
+        meter.className = "ai-meter";
+        const fill = document.createElement("i");
+        meter.appendChild(fill);
+        const note = document.createElement("p");
+        note.textContent = sig.note;
+        row.append(top, meter, note);
+        list.appendChild(row);
+        if (animate) setTimeout(() => { fill.style.width = sig.strength + "%"; }, 450 + i * 120);
+        else fill.style.width = sig.strength + "%";
+      });
+
+      $("ai-levels").hidden = !r.support && !r.resistance;
+      $("ai-support").textContent = r.support || "—";
+      $("ai-resistance").textContent = r.resistance || "—";
+      $("ai-model").textContent = prettyModel(r.model);
+    }
+
+    function makeAiThumb(dataUrl) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = 192;
+          canvas.height = Math.round((192 * img.height) / img.width) || 120;
+          canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL("image/jpeg", 0.7));
+        };
+        img.onerror = () => resolve("");
+        img.src = dataUrl;
+      });
+    }
+
+    function renderAiHistory() {
+      const box = $("ai-history");
+      const list = aiHistory();
+      box.replaceChildren();
+      if (!list.length) {
+        const empty = document.createElement("p");
+        empty.className = "ai-empty";
+        empty.textContent = t("ai_history_empty");
+        box.appendChild(empty);
+        return;
+      }
+      list.forEach((entry, i) => {
+        const r = entry.result || {};
+        const item = document.createElement("button");
+        item.type = "button";
+        item.className = "ai-hist";
+        item.style.animationDelay = i * 60 + "ms";
+        const img = document.createElement("img");
+        img.alt = "";
+        if (entry.thumb) img.src = entry.thumb;
+        const text = document.createElement("div");
+        const head = document.createElement("b");
+        head.className = r.direction || "WAIT";
+        head.textContent = t("ai_dir_" + String(r.direction || "wait").toLowerCase()) + " · " + (r.confidence ?? 0) + "%";
+        const meta = document.createElement("small");
+        const time = new Date(entry.at).toLocaleTimeString(currentLang(), { hour: "2-digit", minute: "2-digit" });
+        meta.textContent = [time, r.pair, r.timeframe].filter(Boolean).join(" · ");
+        text.append(head, meta);
+        item.append(img, text);
+        item.addEventListener("click", () => {
+          if (window.qbotAi.busy) return;
+          if (entry.thumb) $("ai-shot").src = entry.thumb;
+          $("ai-stage").dataset.state = "done";
+          aiSetStep(4);
+          aiStatus(t("ai_from_history").replace("{time}", time), false);
+          renderAiResult(r, true);
+        });
+        box.appendChild(item);
+      });
+    }
+
+    function aiFail(code) {
+      aiStopThinking();
+      $("ai-stage").dataset.state = "error";
+      const key = "ai_err_" + code;
+      $("ai-oops-text").textContent = t(key) !== key ? t(key) : t("ai_err_upstream");
+      aiStatus("", false);
+      aiSetStep(-1);
+    }
+
+    async function runAi() {
+      const ai = window.qbotAi;
+      if (ai.busy) return;
+      const run = $("ai-run");
+      if (isVip !== true) {
+        run.classList.remove("nudge");
+        void run.offsetWidth;
+        run.classList.add("nudge");
+        setTimeout(() => window.qbot.openExternal("https://ai-tradingbot.pro/buy/vip.php"), 450);
+        return;
+      }
+      ai.busy = true;
+      run.disabled = true;
+      run.classList.add("busy");
+      $("ai-run-text").textContent = t("ai_run_busy");
+      $("ai-result").hidden = true;
+      $("ai-time").textContent = "";
+      $("ai-shot").removeAttribute("src");
+      $("ai-stage").dataset.state = "capture";
+      aiSetStep(0);
+      aiStatus(t("ai_st_capture"), true);
+      const started = Date.now();
+      try {
+        const shot = await window.qbot.aiCapture();
+        if (!shot || !shot.ok) return aiFail((shot && shot.error) || "capture");
+        $("ai-shot").src = shot.image;
+        const flash = $("ai-flash");
+        flash.classList.remove("on");
+        void flash.offsetWidth;
+        flash.classList.add("on");
+        await new Promise((resolve) => setTimeout(resolve, 650));
+        $("ai-stage").dataset.state = "thinking";
+        aiSetStep(1);
+        aiStartThinking();
+        const sendTimer = setTimeout(() => aiSetStep(2), 1200);
+        const res = await window.qbot.aiAnalyze({ image: shot.image, pair: shot.pair, lang: currentLang() });
+        clearTimeout(sendTimer);
+        aiStopThinking();
+        if (!res || !res.ok || !res.result) return aiFail((res && res.error) || "upstream");
+        $("ai-stage").dataset.state = "done";
+        aiSetStep(4);
+        aiStatus(t("ai_st_done"), false);
+        $("ai-time").textContent = t("ai_took").replace("{s}", ((Date.now() - started) / 1000).toFixed(1));
+        if (typeof res.left === "number") $("ai-left").textContent = t("ai_left").replace("{n}", res.left);
+        renderAiResult(res.result, true);
+        setTimeout(() => $("ai-verdict").scrollIntoView({ behavior: "smooth", block: "start" }), 250);
+        const thumb = await makeAiThumb(shot.image);
+        saveAiHistory([{ at: Date.now(), thumb, result: res.result }, ...aiHistory()]);
+        renderAiHistory();
+      } catch (e) {
+        aiFail("network");
+      } finally {
+        ai.busy = false;
+        run.disabled = false;
+        run.classList.remove("busy");
+        updateAiLock();
+      }
+    }
+
+    function openAiPanel() {
+      $("signals-panel").hidden = true;
+      stopSigLoop();
+      $("ai-panel").hidden = false;
+      $("ai-panel").scrollTop = 0;
+      updateAiLock();
+      renderAiHistory();
+      if ($("ai-stage").dataset.state === "idle") aiStatus("", false);
+    }
+
+    $("ai").addEventListener("click", openAiPanel);
+    $("ai-close").addEventListener("click", () => { $("ai-panel").hidden = true; });
+    $("ai-run").addEventListener("click", runAi);
     $("lessons").addEventListener("click", () => {
       window.qbot.openExternal("https://ai-tradingbot.pro/qbot/lesons.html");
     });

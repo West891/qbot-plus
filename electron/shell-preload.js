@@ -19,8 +19,11 @@ contextBridge.exposeInMainWorld("qbot", {
   stop() {
     return ipcRenderer.invoke("qbot-stop");
   },
-  ai() {
-    return ipcRenderer.invoke("qbot-ai");
+  aiCapture() {
+    return ipcRenderer.invoke("qbot-ai-capture");
+  },
+  aiAnalyze(payload) {
+    return ipcRenderer.invoke("qbot-ai-analyze", payload);
   },
   flags() {
     return ipcRenderer.invoke("qbot-flags");

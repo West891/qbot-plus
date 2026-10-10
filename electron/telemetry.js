@@ -90,4 +90,4 @@ function reportError(kind, message, details) {
   });
 }
 
-module.exports = { report, reportError };
+module.exports = { report, reportError, installId };
