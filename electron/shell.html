@@ -1644,6 +1644,174 @@
     @keyframes shake { 25% { transform: translateX(-2px); } 75% { transform: translateX(2px); } }
     @keyframes tilt { 50% { transform: rotate(-10deg) scale(1.1); } }
 
+    .upd-toast {
+      --upd-angle: 0deg;
+      position: absolute;
+      top: 78px;
+      left: 14px;
+      right: 14px;
+      z-index: 45;
+      padding: 1px;
+      border-radius: 18px;
+      background: conic-gradient(from var(--upd-angle), #6366f1, #22d3ee, #34d399, #a855f7, #6366f1);
+      box-shadow: 0 18px 50px rgba(8, 12, 30, 0.75), 0 0 34px rgba(99, 102, 241, 0.35);
+      animation: upd-in 0.75s cubic-bezier(0.2, 1.35, 0.4, 1) both, upd-spin 4s linear infinite;
+    }
+    .upd-toast[hidden] { display: none; }
+    .upd-toast.leaving { animation: upd-out 0.32s ease-in both; }
+    .upd-inner {
+      position: relative;
+      overflow: hidden;
+      padding: 14px;
+      border-radius: 17px;
+      background:
+        radial-gradient(120% 90% at 0% 0%, rgba(99, 102, 241, 0.28), transparent 60%),
+        radial-gradient(90% 80% at 100% 100%, rgba(34, 211, 238, 0.16), transparent 60%),
+        #0b1122;
+    }
+    .upd-inner::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.09) 48%, transparent 66%);
+      transform: translateX(-120%);
+      animation: upd-sheen 3.6s ease-in-out 0.8s infinite;
+      pointer-events: none;
+    }
+    .upd-row { display: flex; align-items: center; gap: 12px; }
+    .upd-icon {
+      position: relative;
+      width: 46px;
+      height: 46px;
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      background: var(--grad);
+      box-shadow: 0 8px 22px rgba(59, 130, 246, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    }
+    .upd-icon::before {
+      content: "";
+      position: absolute;
+      inset: -6px;
+      border-radius: 18px;
+      border: 2px solid rgba(34, 211, 238, 0.55);
+      animation: upd-ring 2.2s ease-out infinite;
+    }
+    .upd-icon svg {
+      width: 24px;
+      height: 24px;
+      fill: none;
+      stroke: #fff;
+      stroke-width: 1.9;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      animation: upd-float 2.4s ease-in-out infinite;
+    }
+    .upd-icon .flame { stroke: #fde68a; transform-origin: 6px 18px; animation: upd-flame 0.35s ease-in-out infinite alternate; }
+    .upd-spark {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 0 8px #22d3ee, 0 0 14px #6366f1;
+      animation: upd-twinkle 1.8s ease-in-out infinite;
+    }
+    .upd-spark:nth-of-type(1) { top: -4px; right: -3px; }
+    .upd-spark:nth-of-type(2) { bottom: -2px; left: -5px; width: 4px; height: 4px; animation-delay: -0.6s; }
+    .upd-spark:nth-of-type(3) { top: 40%; right: -9px; width: 3px; height: 3px; animation-delay: -1.2s; }
+    .upd-text { flex: 1; min-width: 0; }
+    .upd-text small {
+      display: block;
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #67e8f9;
+    }
+    .upd-text b {
+      display: block;
+      margin-top: 2px;
+      font-size: 17px;
+      font-weight: 750;
+      background: linear-gradient(90deg, #fff, #c7d2fe, #67e8f9, #fff);
+      background-size: 250% 100%;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      animation: shimmer 4s linear infinite;
+    }
+    .upd-text p { margin: 3px 0 0; font-size: 12px; line-height: 1.4; color: #aab3c8; }
+    .upd-close {
+      align-self: flex-start;
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      border-radius: 9px;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .upd-close:hover { color: var(--text); background: rgba(255, 255, 255, 0.12); }
+    .upd-close svg { width: 14px; height: 14px; }
+    .upd-bar {
+      position: relative;
+      height: 6px;
+      margin-top: 12px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+    }
+    .upd-bar[hidden] { display: none; }
+    .upd-bar i {
+      position: relative;
+      display: block;
+      height: 100%;
+      width: 0;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #6366f1, #3b82f6, #22d3ee);
+      box-shadow: 0 0 12px rgba(34, 211, 238, 0.7);
+      transition: width 0.45s ease;
+    }
+    .upd-bar i::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.22) 0 6px, transparent 6px 12px);
+      background-size: 17px 17px;
+      animation: upd-stripes 0.6s linear infinite;
+    }
+    .upd-actions { display: flex; gap: 8px; margin-top: 12px; }
+    .upd-actions[hidden] { display: none; }
+    .upd-actions button { height: 36px; }
+    .upd-go {
+      flex: 1;
+      color: #fff;
+      background: var(--grad);
+      box-shadow: 0 8px 22px rgba(59, 130, 246, 0.45);
+      animation: upd-pulse 1.8s ease-in-out infinite;
+    }
+    .upd-go:hover { transform: translateY(-1px); }
+    .upd-later { color: #cbd5e1; background: rgba(255, 255, 255, 0.06); }
+    .upd-later:hover { background: rgba(255, 255, 255, 0.12); }
+    @property --upd-angle { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+    @keyframes upd-spin { to { --upd-angle: 360deg; } }
+    @keyframes upd-in {
+      from { opacity: 0; transform: translateY(-28px) scale(0.92); filter: blur(6px); }
+      to { opacity: 1; transform: none; filter: none; }
+    }
+    @keyframes upd-out { to { opacity: 0; transform: translateY(-18px) scale(0.95); } }
+    @keyframes upd-sheen { 0% { transform: translateX(-120%); } 55%, 100% { transform: translateX(120%); } }
+    @keyframes upd-ring { from { opacity: 0.9; transform: scale(0.85); } to { opacity: 0; transform: scale(1.25); } }
+    @keyframes upd-float { 50% { transform: translate(1px, -2px) rotate(-4deg); } }
+    @keyframes upd-flame { to { transform: scale(0.75); opacity: 0.6; } }
+    @keyframes upd-twinkle { 0%, 100% { opacity: 0; transform: scale(0.4); } 50% { opacity: 1; transform: scale(1); } }
+    @keyframes upd-stripes { to { background-position: 17px 0; } }
+    @keyframes upd-pulse {
+      0%, 100% { box-shadow: 0 8px 22px rgba(59, 130, 246, 0.45), 0 0 0 0 rgba(34, 211, 238, 0.5); }
+      50% { box-shadow: 0 8px 22px rgba(59, 130, 246, 0.45), 0 0 0 7px rgba(34, 211, 238, 0); }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
         animation: none !important;
@@ -1972,6 +2140,29 @@
       <p class="sig-label" data-i18n="sig_recent">ПОСЛЕДНИЕ 10 СИГНАЛОВ</p>
       <div id="sig-list" class="sig-list"></div>
     </section>
+    <div id="upd-toast" class="upd-toast" role="status" aria-live="polite" hidden>
+      <div class="upd-inner">
+        <div class="upd-row">
+          <div class="upd-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M14 4c3-1 5-1 6 0 1 1 1 3 0 6l-6 6-6-6 6-6z"/><path d="M8 10l-3 1-2 3 4 1M14 16l-1 3-3 2-1-4"/><circle cx="15.5" cy="8.5" r="1.5"/><path class="flame" d="M6 18c-1 1-2 2-2 4 2 0 3-1 4-2"/></svg>
+            <i class="upd-spark"></i><i class="upd-spark"></i><i class="upd-spark"></i>
+          </div>
+          <div class="upd-text">
+            <small data-i18n="upd_title">Вышла новая версия</small>
+            <b id="upd-version"></b>
+            <p id="upd-sub"></p>
+          </div>
+          <button id="upd-close" class="upd-close" type="button" data-i18n-title="upd_later" title="Позже">
+            <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+        </div>
+        <div id="upd-bar" class="upd-bar" hidden><i id="upd-progress"></i></div>
+        <div id="upd-actions" class="upd-actions" hidden>
+          <button id="upd-go" class="upd-go" type="button"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg><span data-i18n="upd_install">Обновить сейчас</span></button>
+          <button id="upd-later" class="upd-later" type="button"><span data-i18n="upd_later">Позже</span></button>
+        </div>
+      </div>
+    </div>
   </aside>
   <script>
     const $ = (id) => document.getElementById(id);
@@ -2037,6 +2228,10 @@
         update_install: "Перезапустить и установить",
         update_noconfig: "Укажите GitHub-репозиторий в electron/github-update.json",
         update_error: "Не удалось проверить обновление",
+        upd_title: "Вышла новая версия", upd_preparing: "Готовим загрузку обновления…",
+        upd_downloading: "Скачиваем обновление… {percent}%",
+        upd_ready: "Всё готово! Перезапустите приложение, чтобы обновиться.",
+        upd_install: "Обновить сейчас", upd_later: "Позже",
         splash_connect: "Подключение к платформе…", splash_page: "Загрузка торгового терминала…",
         splash_robot: "Запуск робота…", splash_ready: "Всё готово", splash_error: "Не удалось загрузить страницу",
         splash_retry: "Повторить", step_platform: "Платформа", step_page: "Терминал", step_robot: "Робот",
@@ -2093,6 +2288,10 @@
         update_install: "Restart and install",
         update_noconfig: "Set the GitHub repository in electron/github-update.json",
         update_error: "Could not check for updates",
+        upd_title: "New version available", upd_preparing: "Preparing the update download…",
+        upd_downloading: "Downloading the update… {percent}%",
+        upd_ready: "All set! Restart the app to update.",
+        upd_install: "Update now", upd_later: "Later",
         splash_connect: "Connecting to the platform…", splash_page: "Loading trading terminal…",
         splash_robot: "Starting the robot…", splash_ready: "All set", splash_error: "Failed to load the page",
         splash_retry: "Retry", step_platform: "Platform", step_page: "Terminal", step_robot: "Robot",
@@ -2149,6 +2348,10 @@
         update_install: "Reiniciar e instalar",
         update_noconfig: "Informe o repositório GitHub em electron/github-update.json",
         update_error: "Não foi possível verificar a atualização",
+        upd_title: "Nova versão disponível", upd_preparing: "Preparando o download da atualização…",
+        upd_downloading: "Baixando a atualização… {percent}%",
+        upd_ready: "Tudo pronto! Reinicie o app para atualizar.",
+        upd_install: "Atualizar agora", upd_later: "Depois",
         splash_connect: "Conectando à plataforma…", splash_page: "Carregando o terminal de trading…",
         splash_robot: "Iniciando o robô…", splash_ready: "Tudo pronto", splash_error: "Não foi possível carregar a página",
         splash_retry: "Tentar novamente", step_platform: "Plataforma", step_page: "Terminal", step_robot: "Robô",
@@ -3041,6 +3244,7 @@
       const state = updateInfo.state;
       if (!state || state === "idle") {
         box.hidden = true;
+        renderUpdateToast();
         return;
       }
       box.hidden = false;
@@ -3062,6 +3266,59 @@
       track.hidden = !showTrack;
       $("update-fill").style.width = (state === "available" ? 8 : updateInfo.percent || 0) + "%";
       install.hidden = state !== "ready";
+      renderUpdateToast();
+    }
+
+    const UPD_DISMISS_KEY = "qbot_update_dismissed";
+
+    function updatePhase() {
+      const state = updateInfo.state;
+      if (state === "ready") return "ready";
+      return state === "available" || state === "downloading" ? "download" : null;
+    }
+
+    function readDismissed() {
+      try {
+        return localStorage.getItem(UPD_DISMISS_KEY) || "";
+      } catch (e) {
+        return "";
+      }
+    }
+
+    function renderUpdateToast() {
+      const toast = $("upd-toast");
+      const phase = updatePhase();
+      const next = updateInfo.next || "";
+      if (!phase || !next || readDismissed() === next + ":" + phase) {
+        toast.hidden = true;
+        return;
+      }
+      const ready = phase === "ready";
+      const downloading = updateInfo.state === "downloading";
+      const percent = Math.max(0, Math.min(100, Number(updateInfo.percent) || 0));
+      $("upd-version").textContent = "Q-bot PLUS " + next;
+      $("upd-sub").textContent = ready
+        ? t("upd_ready")
+        : downloading
+          ? t("upd_downloading").replace("{percent}", String(percent))
+          : t("upd_preparing");
+      $("upd-bar").hidden = ready;
+      $("upd-progress").style.width = (downloading ? Math.max(4, percent) : 4) + "%";
+      $("upd-actions").hidden = !ready;
+      toast.classList.remove("leaving");
+      toast.hidden = false;
+    }
+
+    function dismissUpdateToast() {
+      const toast = $("upd-toast");
+      const phase = updatePhase();
+      try {
+        if (phase && updateInfo.next) localStorage.setItem(UPD_DISMISS_KEY, updateInfo.next + ":" + phase);
+      } catch (e) {}
+      toast.classList.add("leaving");
+      setTimeout(() => {
+        if (toast.classList.contains("leaving")) toast.hidden = true;
+      }, 320);
     }
 
     $("proxy-toggle").addEventListener("click", (event) => {
@@ -3097,6 +3354,9 @@
       event.stopPropagation();
       window.qbot.installUpdate();
     });
+    $("upd-go").addEventListener("click", () => window.qbot.installUpdate());
+    $("upd-close").addEventListener("click", dismissUpdateToast);
+    $("upd-later").addEventListener("click", dismissUpdateToast);
     window.qbot.onUpdate(renderUpdate);
     window.qbot.updateState().then(renderUpdate);
 

@@ -6,3 +6,5 @@ landing/stats.secret.json
 landing/stats-secret.php
 landing/stats-data.json
 landing/stats-data.php
+landing/app-stats-secret.php
+landing/app-stats-data.php

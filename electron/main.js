@@ -12,6 +12,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const { setupUpdater } = require("./updater");
+const telemetry = require("./telemetry");
 
 const ROOT = path.join(__dirname, "..");
 const WORLD_ID = 1001;
@@ -251,9 +252,17 @@ function isTradeUrl(rawUrl) {
 
 // Каждый файл запускается отдельным классическим скриптом в одном мире:
 // top-level let/const (storage, Utils, QbotDom...) общие, как у content scripts Chrome.
-async function injectBot(contents) {
+// Injections run one after another: two overlapping runs (an error page, then the fallback
+// page) would otherwise load the scripts twice into the same world.
+function injectBot(contents) {
+  const run = (contents.__qbotInjectChain || Promise.resolve()).then(() => injectNow(contents));
+  contents.__qbotInjectChain = run.catch(() => {});
+  return run;
+}
+
+async function injectNow(contents) {
   const url = contents.getURL();
-  if (!canInjectUrl(url)) return;
+  if (!canInjectUrl(url) || contents.__qbotLoadFailed) return;
   try {
     const already = await contents.executeJavaScriptInIsolatedWorld(
       WORLD_ID,
@@ -277,6 +286,13 @@ async function injectBot(contents) {
 function wireContents(contents) {
   if (contents.__qbotWired) return;
   contents.__qbotWired = true;
+  // getURL() of a failed load still returns the https address, but the document is chrome-error.
+  contents.on("did-start-navigation", (_event, _url, isInPlace, isMainFrame) => {
+    if (isMainFrame && !isInPlace) contents.__qbotLoadFailed = false;
+  });
+  contents.on("did-fail-load", (_event, code, _description, _url, isMainFrame) => {
+    if (isMainFrame && code !== -3) contents.__qbotLoadFailed = true;
+  });
   contents.on("did-finish-load", () => {
     injectBot(contents);
   });
@@ -288,6 +304,83 @@ function wireContents(contents) {
       contents.reload();
     }
   });
+}
+
+// ——— Ошибки бота → Telegram (через landing/app-stats.php) ———
+
+const DOM_LABELS = {
+  balance: "Баланс",
+  userMenu: "Меню аккаунта",
+  assetAdd: "Кнопка «+» добавления пары",
+  investInput: "Поле суммы сделки",
+  tradeUp: "Кнопка «Вверх»",
+  tradeDown: "Кнопка «Вниз»",
+};
+const DOM_MISSING_MS = 20000;
+const IMPORTANT_WARNING = /не найден|не удалось|не вижу|не достигнут|нет доступных|ошибк/i;
+const ROUTINE_WARNING = /повтор|ждём|отклад/i;
+const botStates = new WeakMap();
+
+function brokerPage(contents) {
+  try {
+    const url = new URL(contents.getURL());
+    return url.protocol === "https:" ? url.pathname : "";
+  } catch (e) {
+    return "";
+  }
+}
+
+function errorDetails(contents, source) {
+  const state = botStates.get(contents);
+  return { source, page: brokerPage(contents), vip: !!(state && state.vip) };
+}
+
+function watchBotErrors(contents) {
+  contents.on("console-message", (event, legacyLevel, legacyMessage, legacyLine, legacySource) => {
+    const level = event.level ?? legacyLevel;
+    const message = String(event.message ?? legacyMessage ?? "");
+    const sourceId = String(event.sourceId ?? legacySource ?? "");
+    const line = event.lineNumber ?? legacyLine;
+    if (!sourceId.startsWith("qbot://bundle/") || !brokerPage(contents)) return;
+    const isError = level === "error" || level === 3;
+    const isWarning = level === "warning" || level === 2;
+    if (!isError && !(isWarning && IMPORTANT_WARNING.test(message) && !ROUTINE_WARNING.test(message))) return;
+    const file = sourceId.replace(/^qbot:\/\/bundle\/(main\/)?/, "");
+    telemetry.reportError("script", message.replace(/%c/g, ""), errorDetails(contents, file + ":" + line));
+  });
+
+  contents.on("did-fail-load", (_event, code, description, url, isMainFrame) => {
+    if (!isMainFrame || code === -3) return;
+    let host = "";
+    try {
+      host = new URL(url).host;
+    } catch (e) {}
+    telemetry.reportError("page", `${description} (${code}) — ${host || url}`, { page: host });
+  });
+
+  contents.on("render-process-gone", (_event, details) => {
+    telemetry.reportError("crash", `Страница брокера упала: ${details.reason} (код ${details.exitCode})`, errorDetails(contents, ""));
+  });
+}
+
+// Called with every sidebar poll: a page element that stays missing for 20 s is reported once.
+function trackBotState(contents, state) {
+  if (!contents || contents.isDestroyed()) return;
+  const previous = botStates.get(contents) || { missingSince: {}, reported: {} };
+  const next = { vip: !!(state && state.vip), missingSince: {}, reported: {} };
+  botStates.set(contents, next);
+  const stage = state && state.account && state.account.stage;
+  if (!isTradeUrl(contents.getURL()) || (stage !== "ready" && stage !== "access")) return;
+  for (const issue of (state.dom && state.dom.issues) || []) {
+    if (issue.state !== "missing") continue;
+    const key = issue.key;
+    next.missingSince[key] = previous.missingSince[key] || Date.now();
+    next.reported[key] = !!previous.reported[key];
+    if (next.reported[key] || Date.now() - next.missingSince[key] < DOM_MISSING_MS) continue;
+    next.reported[key] = true;
+    const label = DOM_LABELS[key] || key;
+    telemetry.reportError("dom", `Бот не нашёл на странице: ${label} (${key})`, errorDetails(contents, "dom-healer"));
+  }
 }
 
 const SIDEBAR_WIDTH = 400;
@@ -570,6 +663,7 @@ function createWindow(targetUrl) {
     }
     sendStage({ stage: "error", code, description });
   });
+  watchBotErrors(view.webContents);
   view.webContents.setUserAgent(brokerSession().getUserAgent());
   view.webContents.loadURL(targetUrl || initialUrl());
 
@@ -922,11 +1016,14 @@ app.whenReady().then(() => {
     return contents && !contents.isDestroyed() ? navState(contents) : null;
   });
 
-  ipcMain.handle("qbot-bot-state", (event) => {
-    return runInBot(
-      siteContentsFrom(event.sender),
+  ipcMain.handle("qbot-bot-state", async (event) => {
+    const contents = siteContentsFrom(event.sender);
+    const state = await runInBot(
+      contents,
       "globalThis.__QBOT_SIDEBAR_API__ ? globalThis.__QBOT_SIDEBAR_API__.state() : null"
     );
+    trackBotState(contents, state);
+    return state;
   });
 
   ipcMain.handle("qbot-settings-get", (event) => {
@@ -946,11 +1043,20 @@ app.whenReady().then(() => {
     );
   });
 
-  ipcMain.handle("qbot-start", (event) => {
-    return runInBot(
-      siteContentsFrom(event.sender),
+  ipcMain.handle("qbot-start", async (event) => {
+    const contents = siteContentsFrom(event.sender);
+    const result = await runInBot(
+      contents,
       "globalThis.__QBOT_SIDEBAR_API__ ? globalThis.__QBOT_SIDEBAR_API__.start() : { ok: false, error: 'Страница ещё не готова' }"
     );
+    if (result && result.ok) {
+      const state = await runInBot(
+        contents,
+        "globalThis.__QBOT_SIDEBAR_API__ ? globalThis.__QBOT_SIDEBAR_API__.state() : null"
+      ).catch(() => null);
+      telemetry.report("start", { vip: !!(state && state.vip) });
+    }
+    return result;
   });
 
   ipcMain.handle("qbot-stop", (event) => {
@@ -1091,6 +1197,16 @@ app.whenReady().then(() => {
 
   buildMenu();
   createWindow(initialUrl());
+
+  // "Opened the app" once per launch, and again each new day if the app stays open overnight.
+  const today = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Moscow" });
+  let reportedDay = today();
+  telemetry.report("open");
+  setInterval(() => {
+    if (today() === reportedDay) return;
+    reportedDay = today();
+    telemetry.report("open");
+  }, 10 * 60 * 1000);
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow(initialUrl());

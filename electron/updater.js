@@ -32,6 +32,7 @@ function setupUpdater() {
   const version = app.getVersion();
   let lastStatus = { state: "idle", version };
   let pending = null;
+  let nextVersion = null;
 
   const push = (status) => {
     lastStatus = status;
@@ -72,6 +73,7 @@ function setupUpdater() {
     push({ state: "checking", version });
   });
   autoUpdater.on("update-available", (info) => {
+    nextVersion = info.version;
     push({ state: "available", version, next: info.version, notes: notesText(info.releaseNotes) });
   });
   autoUpdater.on("update-not-available", () => {
@@ -81,6 +83,7 @@ function setupUpdater() {
     push({
       state: "downloading",
       version,
+      next: nextVersion,
       percent: Math.round(progress.percent || 0),
     });
   });
