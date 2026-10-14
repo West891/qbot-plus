@@ -465,6 +465,77 @@ function stopRobot() {
   return { ok: true };
 }
 
+// ——— Stop Loss / Take Profit / Trailing Stop ———
+// Лимиты в % от баланса на момент запуска (startBalance) и считаются по прибыли сессии.
+// Stop Loss жёсткий: сделку, проигрыш которой увёл бы убыток за лимит, робот не открывает.
+const QBOT_RISK_PEAK_KEY = "qbot_risk_peak";
+const QBOT_STOP_REASON_KEY = "qbot_stop_reason";
+
+function roundMoney(n) {
+  return Math.round(n * 100) / 100;
+}
+
+function readRiskLimits() {
+  const settings = getQbotSettings();
+  const vip = String(settings.PD || "0") === "1";
+  const percent = (value) => {
+    const n = parseFloat(value);
+    return vip && Number.isFinite(n) && n > 0 ? Math.min(n, 1000) : 0;
+  };
+  const slPct = percent(settings["stop-loss"]);
+  const tpPct = percent(settings["take-profit"]);
+  const trailing = slPct > 0 && (settings["trailing-stop"] === true || settings["trailing-stop"] === "true");
+  const base = Number(localStorage.getItem("startBalance")) || 0;
+  const profit = roundMoney(Number(localStorage.getItem("qbot_session_profit")) || 0);
+  let peak = Math.max(0, Number(localStorage.getItem(QBOT_RISK_PEAK_KEY)) || 0);
+  if (trailing && profit > peak) {
+    peak = profit;
+    localStorage.setItem(QBOT_RISK_PEAK_KEY, String(peak));
+  }
+  const sl = base > 0 ? roundMoney((base * slPct) / 100) : 0;
+  const tp = base > 0 ? roundMoney((base * tpPct) / 100) : 0;
+  return {
+    base,
+    slPct,
+    tpPct,
+    sl,
+    tp,
+    trailing,
+    peak: trailing ? peak : 0,
+    profit,
+    floor: sl > 0 ? roundMoney((trailing ? peak : 0) - sl) : null,
+  };
+}
+
+// Причина остановки или null. stake — ставка сделки, которую робот собирается открыть (0 — просто проверка).
+function riskStopCheck(stake) {
+  const r = readRiskLimits();
+  if (r.tp > 0 && r.profit >= r.tp) return { kind: "tp", profit: r.profit, limit: r.tp };
+  if (r.floor !== null && r.profit <= r.floor) {
+    return { kind: r.peak > 0 ? "trail" : "sl", profit: r.profit, limit: r.floor, peak: r.peak };
+  }
+  if (r.floor !== null && stake > 0 && roundMoney(r.profit - stake) < r.floor) {
+    return { kind: "budget", profit: r.profit, limit: r.floor, stake: roundMoney(stake), peak: r.peak };
+  }
+  return null;
+}
+
+function stopByRisk(reason) {
+  localStorage.setItem(QBOT_STOP_REASON_KEY, JSON.stringify({ ...reason, at: Date.now() }));
+  const money = (n) => (n < 0 ? "-$" : "+$") + Math.abs(n).toFixed(2);
+  const text = {
+    tp: `🎯 Take Profit ${money(reason.profit)}`,
+    sl: `🛑 Stop Loss ${money(reason.profit)}`,
+    trail: `🛑 Trailing Stop ${money(reason.profit)}`,
+    budget: `🛑 Stop Loss: ставка $${reason.stake} превысила бы лимит`,
+  }[reason.kind];
+  const log = document.querySelector(".log");
+  if (log) log.textContent = text;
+  console.log("[Q-bot] " + text + " — робот остановлен", reason);
+  if (typeof window !== "undefined") window.__QBOT_DEAL_OPENING__ = false;
+  stopRobot();
+}
+
 function normalizeSignalDirection(raw) {
   const value = String(raw ?? "").trim().toUpperCase();
   if (["UP", "CALL", "BUY", "HIGH", "HIGHER", "ВВЕРХ", "ВЫШЕ"].includes(value)) return "UP";
@@ -795,6 +866,12 @@ function openDeal(direction, amount, symbol, attempt = 0, onOpened = null) {
     return;
   }
 
+  const risk = riskStopCheck(roundInvestmentAmount(amount));
+  if (risk) {
+    stopByRisk(risk);
+    return;
+  }
+
   if (hasOpenTradesPreventingNewDeal()) {
     console.warn("[Q-bot] Есть открытые сделки — открытие отложено до закрытия.");
     setTimeout(() => openDeal(way, amount, symbol, attempt, onOpened), 1200);
@@ -937,6 +1014,12 @@ function activeDeal(direction, symbol) {
         settled.delta,
         settled.kind === "refund" ? "возврат" : lost ? "минус" : "плюс"
       );
+
+      const risk = riskStopCheck(0);
+      if (risk) {
+        stopByRisk(risk);
+        return;
+      }
 
       if (lost) {
         console.log("Сделка убыточная → мартингейл по стратегии:", strategy);

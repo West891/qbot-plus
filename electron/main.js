@@ -158,8 +158,18 @@ function buildChromeShim(cssText) {
                   vip: globalThis.__QBOT_ACCOUNT__.vip
                 }
               : null,
-            dom: globalThis.QbotHeal ? globalThis.QbotHeal.summary() : null
+            dom: globalThis.QbotHeal ? globalThis.QbotHeal.summary() : null,
+            risk: typeof readRiskLimits === "function" ? riskState() : null
           };
+          function riskState() {
+            let stop = null;
+            try {
+              stop = JSON.parse(localStorage.getItem("qbot_stop_reason") || "null");
+            } catch (e) {
+              stop = null;
+            }
+            return Object.assign(readRiskLimits(), { stop });
+          }
         },
         dom(action, key, label, hint) {
           const heal = globalThis.QbotHeal;
@@ -192,6 +202,8 @@ function buildChromeShim(cssText) {
           if (hid) hid.style.visibility = "visible";
           localStorage.setItem("statusbot", "work");
           localStorage.setItem("qbot_session_profit", "0");
+          localStorage.removeItem("qbot_risk_peak");
+          localStorage.removeItem("qbot_stop_reason");
           const profit = document.getElementById("resbalance");
           if (profit) profit.textContent = "0";
           if (typeof start !== "function") {

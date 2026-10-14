@@ -1812,6 +1812,42 @@
       50% { box-shadow: 0 8px 22px rgba(59, 130, 246, 0.45), 0 0 0 7px rgba(34, 211, 238, 0); }
     }
 
+    /* ——— Stop Loss / Take Profit ——— */
+    .risk { margin-top: 10px; }
+    .risk[hidden] { display: none; }
+    .risk-track {
+      position: relative;
+      height: 8px;
+      border-radius: 8px;
+      background: linear-gradient(90deg, rgba(251, 113, 133, 0.55), rgba(255, 255, 255, 0.08) var(--zero, 50%), rgba(52, 211, 153, 0.55));
+    }
+    .risk-zero { position: absolute; top: -3px; bottom: -3px; left: var(--zero, 50%); width: 1px; background: rgba(255, 255, 255, 0.35); }
+    .risk-dot {
+      position: absolute;
+      top: 50%;
+      left: var(--pos, 50%);
+      width: 14px;
+      height: 14px;
+      margin: -7px 0 0 -7px;
+      border-radius: 50%;
+      border: 2px solid #0a0f1c;
+      background: #e0e7ff;
+      box-shadow: 0 0 0 3px rgba(224, 231, 255, 0.18), 0 0 12px rgba(224, 231, 255, 0.6);
+      transition: left 0.6s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.3s ease;
+    }
+    .risk.up .risk-dot { background: var(--green); box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.2), 0 0 12px rgba(52, 211, 153, 0.7); }
+    .risk.down .risk-dot { background: var(--red); box-shadow: 0 0 0 3px rgba(251, 113, 133, 0.2), 0 0 12px rgba(251, 113, 133, 0.7); }
+    .risk-trail { position: absolute; top: -4px; bottom: -4px; left: var(--floor, 0%); width: 2px; border-radius: 2px; background: var(--amber); box-shadow: 0 0 8px var(--amber); transition: left 0.6s ease; }
+    .risk-trail[hidden] { display: none; }
+    .risk-labels { display: flex; justify-content: space-between; gap: 8px; margin-top: 7px; font-size: 11px; font-variant-numeric: tabular-nums; color: var(--muted); }
+    .risk-labels b { font-weight: 650; }
+    .risk-labels .sl b { color: var(--red); }
+    .risk-labels .tp b { color: var(--green); }
+    .risk-labels .mid { color: var(--amber); }
+    .risk-alert.tp { background: rgba(52, 211, 153, 0.1); border-color: rgba(52, 211, 153, 0.4); }
+    .risk-alert.sl { background: rgba(251, 113, 133, 0.1); border-color: rgba(251, 113, 133, 0.4); }
+    .risk-alert p { margin: 0; }
+
     /* ——— AI-анализ ——— */
     .ai-panel {
       --ai-up: #34d399;
@@ -2470,6 +2506,10 @@
           <path id="spark-area" class="area" d=""/>
           <path id="spark-line" d=""/>
         </svg>
+        <div id="risk" class="risk" hidden>
+          <div class="risk-track"><i class="risk-zero"></i><i id="risk-trail" class="risk-trail" hidden></i><i class="risk-dot"></i></div>
+          <div class="risk-labels"><span class="sl">SL <b id="risk-sl">—</b></span><span id="risk-mid" class="mid"></span><span class="tp">TP <b id="risk-tp">—</b></span></div>
+        </div>
         <div class="log">
           <svg class="icon" viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>
           <span id="log">Сигнал появится после запуска робота.</span>
@@ -2534,6 +2574,7 @@
     </div>
 
     <footer>
+      <div id="risk-alert" class="dom-alert risk-alert" hidden role="status"><p id="risk-alert-text"></p></div>
       <div id="dom-alert" class="dom-alert" hidden>
         <p id="dom-alert-text"></p>
         <div class="dom-alert-actions" id="dom-alert-actions"></div>
@@ -2691,6 +2732,11 @@
         log_default: "Сигнал появится после запуска робота.",
         site: "Площадка", open: "Открыть", trade: "Параметры сделки",
         investment: "Сумма входа", stop_loss: "Stop Loss", take_profit: "Take Profit",
+        risk_off: "выкл.", risk_trail_at: "стоп {floor}",
+        risk_stop_tp: "🎯 Take Profit достигнут: {profit} за сессию. Робот остановлен.",
+        risk_stop_sl: "🛑 Сработал Stop Loss: {profit} за сессию. Робот остановлен.",
+        risk_stop_trail: "🛑 Сработал Trailing Stop: прибыль откатилась с {peak} до {profit}. Робот остановлен.",
+        risk_stop_budget: "🛑 Stop Loss: следующая ставка {stake} увела бы убыток ниже {limit}. Робот остановлен, сделка не открыта.",
         strategy: "Стратегия", s_martin: "Мартингейл", s_basic: "Базовая",
         martin_steps: "Шаги мартингейла", signal: "Сила сигнала",
         otc: "OTC-пары", otc_d: "Торговля внебиржевыми активами",
@@ -2774,6 +2820,11 @@
         log_default: "Signals will appear after the robot starts.",
         site: "Platform", open: "Open", trade: "Trade settings",
         investment: "Trade amount", stop_loss: "Stop Loss", take_profit: "Take Profit",
+        risk_off: "off", risk_trail_at: "stop {floor}",
+        risk_stop_tp: "🎯 Take Profit reached: {profit} this session. The robot has stopped.",
+        risk_stop_sl: "🛑 Stop Loss hit: {profit} this session. The robot has stopped.",
+        risk_stop_trail: "🛑 Trailing Stop hit: profit fell from {peak} to {profit}. The robot has stopped.",
+        risk_stop_budget: "🛑 Stop Loss: the next stake of {stake} could push the loss below {limit}. The robot stopped without opening it.",
         strategy: "Strategy", s_martin: "Martingale", s_basic: "Basic",
         martin_steps: "Martingale steps", signal: "Signal strength",
         otc: "OTC pairs", otc_d: "Trade over-the-counter assets",
@@ -2857,6 +2908,11 @@
         log_default: "Os sinais aparecerão após iniciar o robô.",
         site: "Plataforma", open: "Abrir", trade: "Parâmetros da operação",
         investment: "Valor de entrada", stop_loss: "Stop Loss", take_profit: "Take Profit",
+        risk_off: "desl.", risk_trail_at: "stop {floor}",
+        risk_stop_tp: "🎯 Take Profit atingido: {profit} na sessão. O robô parou.",
+        risk_stop_sl: "🛑 Stop Loss acionado: {profit} na sessão. O robô parou.",
+        risk_stop_trail: "🛑 Trailing Stop acionado: o lucro caiu de {peak} para {profit}. O robô parou.",
+        risk_stop_budget: "🛑 Stop Loss: a próxima entrada de {stake} poderia levar a perda abaixo de {limit}. O robô parou sem abri-la.",
         strategy: "Estratégia", s_martin: "Martingale", s_basic: "Básica",
         martin_steps: "Etapas do martingale", signal: "Força do sinal",
         otc: "Pares OTC", otc_d: "Operar ativos de balcão",
@@ -3133,6 +3189,51 @@
       }
       domItems = result.items;
       renderDomList();
+    }
+
+    function riskMoney(n) {
+      const v = Number(n) || 0;
+      // U+2060 keeps the sign and the amount on one line.
+      return (v < 0 ? "−⁠$" : v > 0 ? "+⁠$" : "$") + Math.abs(v).toFixed(2);
+    }
+
+    // Gauge from the Stop Loss floor to Take Profit, with the session profit as a dot.
+    function renderRisk(risk, running) {
+      const box = $("risk");
+      const alert = $("risk-alert");
+      if (!risk || (!risk.sl && !risk.tp)) {
+        box.hidden = true;
+      } else {
+        box.hidden = false;
+        const low = risk.floor !== null ? Math.min(risk.floor, risk.profit, 0) : Math.min(-risk.tp, risk.profit, 0);
+        const high = risk.tp > 0 ? Math.max(risk.tp, risk.profit, 0) : Math.max(risk.sl, risk.profit, 0);
+        const span = high - low || 1;
+        const at = (v) => Math.max(0, Math.min(100, ((v - low) / span) * 100)) + "%";
+        box.style.setProperty("--zero", at(0));
+        box.style.setProperty("--pos", at(risk.profit));
+        box.classList.toggle("up", risk.profit > 0);
+        box.classList.toggle("down", risk.profit < 0);
+        $("risk-sl").textContent = risk.sl > 0 ? riskMoney(-risk.sl) + " (" + risk.slPct + "%)" : t("risk_off");
+        $("risk-tp").textContent = risk.tp > 0 ? riskMoney(risk.tp) + " (" + risk.tpPct + "%)" : t("risk_off");
+        const trailing = risk.trailing && risk.peak > 0 && risk.floor !== null;
+        $("risk-trail").hidden = !trailing;
+        if (trailing) box.style.setProperty("--floor", at(risk.floor));
+        $("risk-mid").textContent = trailing ? t("risk_trail_at").replace("{floor}", riskMoney(risk.floor)) : "";
+      }
+
+      const stop = risk && risk.stop;
+      if (!stop || running) {
+        alert.hidden = true;
+        return;
+      }
+      alert.hidden = false;
+      alert.classList.toggle("tp", stop.kind === "tp");
+      alert.classList.toggle("sl", stop.kind !== "tp");
+      $("risk-alert-text").textContent = t("risk_stop_" + stop.kind)
+        .replace("{profit}", riskMoney(stop.profit))
+        .replace("{limit}", riskMoney(stop.limit))
+        .replace("{peak}", riskMoney(stop.peak || 0))
+        .replace("{stake}", "$" + (stop.stake || 0));
     }
 
     function renderDomAlert(summary) {
@@ -4307,6 +4408,7 @@
         if (data.ready) applyVip(!!data.vip);
         if (data.ready) renderGate(data.account);
         renderDomAlert(data.dom);
+        renderRisk(data.risk, !!data.running);
         if (data.ready && !settingsLoaded) {
           const settings = await window.qbot.settings();
           fill(settings);
