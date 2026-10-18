@@ -520,6 +520,18 @@ function riskStopCheck(stake) {
   return null;
 }
 
+// Реинвест (VIP): ставка нового цикла растёт вместе с балансом сессии, но не опускается ниже суммы входа.
+function reinvestedStake(invest) {
+  const settings = getQbotSettings();
+  const stake = roundInvestmentAmount(invest);
+  const on = String(settings.PD || "0") === "1" &&
+    (settings["auto-reinvest"] === true || settings["auto-reinvest"] === "true");
+  const base = Number(localStorage.getItem("startBalance")) || 0;
+  const profit = Number(localStorage.getItem("qbot_session_profit")) || 0;
+  if (!on || base <= 0 || profit <= 0) return stake;
+  return Math.max(stake, roundInvestmentAmount((stake * (base + profit)) / base));
+}
+
 function stopByRisk(reason) {
   localStorage.setItem(QBOT_STOP_REASON_KEY, JSON.stringify({ ...reason, at: Date.now() }));
   const money = (n) => (n < 0 ? "-$" : "+$") + Math.abs(n).toFixed(2);
@@ -699,7 +711,9 @@ async function start() {
     return;
   }
 
-  const baseInv = beginMartinCycle(getQbotSettings()["start-invest"] ?? 1);
+  const invest = getQbotSettings()["start-invest"] ?? 1;
+  const baseInv = beginMartinCycle(reinvestedStake(invest));
+  if (baseInv !== roundInvestmentAmount(invest)) console.log("[Q-bot] Реинвест: ставка цикла", invest, "→", baseInv);
 
   const labelElements = collectPairTabElements();
 

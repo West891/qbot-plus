@@ -1812,6 +1812,217 @@
       50% { box-shadow: 0 8px 22px rgba(59, 130, 246, 0.45), 0 0 0 7px rgba(34, 211, 238, 0); }
     }
 
+    /* ——— Рынок закрыт (выходные) ——— */
+    .sig-panel.closed > .sig-tfs,
+    .sig-panel.closed > .sig-label,
+    .sig-panel.closed > #sig-active,
+    .sig-panel.closed > #sig-list,
+    .sig-panel.closed #sig-refresh { display: none; }
+    .sig-panel.closed { background: radial-gradient(130% 70% at 50% -5%, #1c1747 0%, #0c1024 50%, #060812 100%); }
+    .mk { position: relative; display: grid; gap: 14px; isolation: isolate; animation: rise 0.5s ease both; }
+    .mk[hidden] { display: none; }
+    .mk-sky { position: absolute; inset: -16px -14px auto; height: 420px; z-index: -1; overflow: hidden; pointer-events: none; }
+    .mk-sky i {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 0 6px rgba(199, 210, 254, 0.9);
+      animation: mk-twinkle 3s ease-in-out infinite;
+    }
+    .mk-sky i:nth-child(1) { left: 8%; top: 12%; animation-delay: -0.4s; }
+    .mk-sky i:nth-child(2) { left: 22%; top: 30%; animation-delay: -1.6s; width: 3px; height: 3px; }
+    .mk-sky i:nth-child(3) { left: 36%; top: 8%; animation-delay: -2.2s; }
+    .mk-sky i:nth-child(4) { left: 64%; top: 16%; animation-delay: -0.9s; }
+    .mk-sky i:nth-child(5) { left: 80%; top: 6%; animation-delay: -2.8s; width: 3px; height: 3px; }
+    .mk-sky i:nth-child(6) { left: 90%; top: 28%; animation-delay: -1.2s; }
+    .mk-sky i:nth-child(7) { left: 12%; top: 52%; animation-delay: -2.5s; }
+    .mk-sky i:nth-child(8) { left: 88%; top: 50%; animation-delay: -0.2s; }
+    .mk-sky i:nth-child(9) { left: 50%; top: 4%; animation-delay: -1.9s; }
+    .mk-sky i:nth-child(10) { left: 72%; top: 38%; animation-delay: -3s; }
+    .mk-sky b {
+      position: absolute;
+      top: 10%;
+      left: 70%;
+      width: 90px;
+      height: 1.5px;
+      border-radius: 2px;
+      background: linear-gradient(90deg, rgba(255, 255, 255, 0.9), transparent);
+      transform: rotate(-28deg);
+      opacity: 0;
+      animation: mk-shoot 7s ease-in 2s infinite;
+    }
+
+    .mk-hero { display: grid; justify-items: center; gap: 8px; padding-top: 4px; text-align: center; }
+    .mk-dial { position: relative; width: 196px; height: 196px; }
+    .mk-dial svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
+    .mk-ticks { fill: none; stroke: rgba(165, 180, 252, 0.22); stroke-width: 6; stroke-dasharray: 1.2 10.31; }
+    .mk-track { fill: none; stroke: rgba(255, 255, 255, 0.06); stroke-width: 6; }
+    .mk-arc {
+      fill: none;
+      stroke: url(#mk-grad);
+      stroke-width: 6;
+      stroke-linecap: round;
+      stroke-dasharray: 552.9;
+      stroke-dashoffset: 552.9;
+      filter: drop-shadow(0 0 6px rgba(129, 140, 248, 0.8));
+      transition: stroke-dashoffset 1s ease;
+    }
+    .mk-orbit { position: absolute; inset: 0; animation: spin 18s linear infinite; }
+    .mk-orbit i { position: absolute; top: 4px; left: 50%; width: 8px; height: 8px; margin-left: -4px; border-radius: 50%; background: #fde68a; box-shadow: 0 0 12px #fbbf24, 0 0 24px rgba(251, 191, 36, 0.6); }
+    .mk-moon {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 92px;
+      height: 92px;
+      margin: -46px 0 0 -46px;
+      overflow: hidden;
+      border-radius: 50%;
+      background: radial-gradient(circle at 34% 30%, #fffbeb 0%, #fde68a 38%, #f59e0b 100%);
+      box-shadow: 0 0 40px rgba(251, 191, 36, 0.55), 0 0 90px rgba(251, 191, 36, 0.25), inset -14px -10px 0 rgba(180, 83, 9, 0.35);
+      animation: mk-float 5s ease-in-out infinite;
+    }
+    .mk-moon::after {
+      content: "";
+      position: absolute;
+      top: -6px;
+      left: 26px;
+      width: 88px;
+      height: 88px;
+      border-radius: 50%;
+      background: #120f33;
+      box-shadow: inset 6px 4px 18px rgba(0, 0, 0, 0.35);
+      opacity: 0.92;
+    }
+    .mk-moon i { position: absolute; border-radius: 50%; background: rgba(180, 83, 9, 0.28); }
+    .mk-moon i:nth-child(1) { left: 14px; top: 26px; width: 12px; height: 12px; }
+    .mk-moon i:nth-child(2) { left: 22px; top: 54px; width: 8px; height: 8px; }
+    .mk-moon i:nth-child(3) { left: 8px; top: 46px; width: 6px; height: 6px; }
+    .mk-zz { position: absolute; top: 46px; right: 34px; font-weight: 800; color: #c7d2fe; opacity: 0; animation: mk-zz 3.6s ease-in-out infinite; }
+    .mk-zz:nth-of-type(2) { font-size: 14px; animation-delay: 1.2s; }
+    .mk-zz:nth-of-type(3) { font-size: 18px; animation-delay: 2.4s; }
+    .mk-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      height: 26px;
+      padding: 0 11px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #fecdd3;
+      background: rgba(251, 113, 133, 0.12);
+      border: 1px solid rgba(251, 113, 133, 0.35);
+    }
+    .mk-pill i { width: 7px; height: 7px; border-radius: 50%; background: var(--red); box-shadow: 0 0 10px var(--red); animation: pulse 1.6s ease-in-out infinite; }
+    .mk-hero h3 { margin: 4px 0 0; font-size: 21px; letter-spacing: -0.02em; }
+    .mk-hero p { margin: 0; max-width: 320px; font-size: 12.5px; line-height: 1.5; color: #9aa6bd; }
+
+    .mk-card {
+      padding: 14px;
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+      border: 1px solid rgba(165, 180, 252, 0.16);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+    }
+    .mk-label { margin: 0 0 10px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #8b93a7; }
+    .mk-tiles { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr; align-items: center; gap: 4px; }
+    .mk-tile {
+      position: relative;
+      display: grid;
+      justify-items: center;
+      gap: 2px;
+      padding: 10px 0 8px;
+      overflow: hidden;
+      border-radius: 13px;
+      background: linear-gradient(180deg, #1d2450 0%, #121734 50%, #0e1229 50%, #0b0f22 100%);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 8px 18px rgba(0, 0, 0, 0.4);
+    }
+    .mk-tile::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: rgba(0, 0, 0, 0.55); }
+    .mk-tile b {
+      display: block;
+      font-size: 28px;
+      font-weight: 800;
+      line-height: 1.05;
+      font-variant-numeric: tabular-nums;
+      background: linear-gradient(180deg, #ffffff, #c7d2fe);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .mk-tile b.flip { animation: mk-flip 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2); }
+    .mk-tile small { font-size: 9.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #7c86a2; }
+    .mk-colon { font-size: 22px; font-weight: 800; color: #6366f1; animation: blink-eye 1s steps(1) infinite; }
+    .mk-at { margin: 12px 0 0; font-size: 12.5px; text-align: center; color: #c5cedd; }
+    .mk-at b { color: #a5f3fc; }
+    .mk-progress { position: relative; height: 6px; margin-top: 12px; border-radius: 6px; background: rgba(255, 255, 255, 0.07); overflow: hidden; }
+    .mk-progress i {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 0;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #6366f1, #22d3ee);
+      box-shadow: 0 0 10px rgba(34, 211, 238, 0.7);
+      transition: width 1s ease;
+    }
+    .mk-progress i::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+      transform: translateX(-100%);
+      animation: upd-sheen 2.6s ease-in-out infinite;
+    }
+    .mk-progress-meta { display: flex; justify-content: space-between; margin-top: 6px; font-size: 11px; color: #7c86a2; font-variant-numeric: tabular-nums; }
+
+    .mk-sessions { display: grid; gap: 8px; }
+    .mk-session {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      animation: rise 0.5s ease both;
+    }
+    .mk-session.next { border-color: rgba(34, 211, 238, 0.4); background: linear-gradient(90deg, rgba(34, 211, 238, 0.1), rgba(255, 255, 255, 0.02)); box-shadow: 0 0 22px rgba(34, 211, 238, 0.12); }
+    .mk-session .sig-flag { width: 30px; height: 30px; border-radius: 50%; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08); }
+    .mk-session.next .sig-flag { animation: mk-ring 2s ease-out infinite; }
+    .mk-city { display: grid; gap: 2px; min-width: 0; }
+    .mk-city b { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+    .mk-city b em { padding: 1px 6px; border-radius: 6px; font-size: 9.5px; font-style: normal; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #04222a; background: var(--cyan); }
+    .mk-city small { font-size: 11.5px; color: #8b93a7; }
+    .mk-city .mk-bar { height: 3px; margin-top: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.06); overflow: hidden; }
+    .mk-city .mk-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #4f46e5, #22d3ee); transition: width 1s ease; }
+    .mk-left { font-size: 12px; font-weight: 700; color: #c7d2fe; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .mk-session.next .mk-left { color: #a5f3fc; }
+    .mk-note { margin: 0; font-size: 11px; line-height: 1.5; text-align: center; color: #5d657a; }
+
+    @keyframes mk-twinkle { 0%, 100% { opacity: 0.15; transform: scale(0.7); } 50% { opacity: 1; transform: scale(1.2); } }
+    @keyframes mk-shoot {
+      0% { opacity: 0; transform: translate(0, 0) rotate(-28deg); }
+      4% { opacity: 1; }
+      12% { opacity: 0; transform: translate(-190px, 100px) rotate(-28deg); }
+      100% { opacity: 0; transform: translate(-190px, 100px) rotate(-28deg); }
+    }
+    @keyframes mk-float { 50% { transform: translateY(-5px); } }
+    @keyframes mk-zz {
+      0% { opacity: 0; transform: translate(0, 0) scale(0.6); }
+      30% { opacity: 1; }
+      100% { opacity: 0; transform: translate(18px, -38px) scale(1.2); }
+    }
+    @keyframes mk-flip {
+      0% { transform: translateY(-55%) rotateX(70deg); opacity: 0; }
+      100% { transform: none; opacity: 1; }
+    }
+    @keyframes mk-ring { 0% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.55); } 100% { box-shadow: 0 0 0 10px rgba(34, 211, 238, 0); } }
+
     /* ——— Stop Loss / Take Profit ——— */
     .risk { margin: 10px 0 14px; }
     .risk[hidden] { display: none; }
@@ -2598,6 +2809,42 @@
           <button id="sig-refresh" type="button" title="Обновить"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg></button>
         </div>
       </div>
+      <div id="mk-closed" class="mk" hidden>
+        <div class="mk-sky" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><b></b></div>
+        <div class="mk-hero">
+          <div class="mk-dial" aria-hidden="true">
+            <svg viewBox="0 0 200 200">
+              <defs><linearGradient id="mk-grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#818cf8"/><stop offset="0.6" stop-color="#22d3ee"/><stop offset="1" stop-color="#fde68a"/></linearGradient></defs>
+              <circle class="mk-ticks" cx="100" cy="100" r="78"/>
+              <circle class="mk-track" cx="100" cy="100" r="88"/>
+              <circle id="mk-arc" class="mk-arc" cx="100" cy="100" r="88"/>
+            </svg>
+            <div class="mk-orbit"><i></i></div>
+            <div class="mk-moon"><i></i><i></i><i></i></div>
+            <span class="mk-zz">z</span><span class="mk-zz">z</span><span class="mk-zz">Z</span>
+          </div>
+          <span class="mk-pill"><i></i><span data-i18n="mk_closed">Рынок закрыт</span></span>
+          <h3 data-i18n="mk_title">Биржи отдыхают</h3>
+          <p data-i18n="mk_text">Forex и мировые биржи не торгуют в выходные. Сигналы вернутся, как только откроется рынок.</p>
+        </div>
+        <div class="mk-card">
+          <p class="mk-label" data-i18n="mk_until">До открытия рынка</p>
+          <div class="mk-tiles" role="timer" aria-live="off">
+            <div class="mk-tile"><b id="mk-d">0</b><small data-i18n="mk_days">дней</small></div><span class="mk-colon">:</span>
+            <div class="mk-tile"><b id="mk-h">00</b><small data-i18n="mk_hours">часов</small></div><span class="mk-colon">:</span>
+            <div class="mk-tile"><b id="mk-m">00</b><small data-i18n="mk_minutes">минут</small></div><span class="mk-colon">:</span>
+            <div class="mk-tile"><b id="mk-s">00</b><small data-i18n="mk_seconds">секунд</small></div>
+          </div>
+          <p id="mk-at" class="mk-at"></p>
+          <div class="mk-progress"><i id="mk-progress"></i></div>
+          <div class="mk-progress-meta"><span data-i18n="mk_weekend">Выходные позади</span><span id="mk-pct">0%</span></div>
+        </div>
+        <div class="mk-card">
+          <p class="mk-label" data-i18n="mk_sessions">Открытие торговых сессий</p>
+          <div id="mk-sessions" class="mk-sessions"></div>
+        </div>
+        <p class="mk-note" data-i18n="mk_note">Панель можно не закрывать — сигналы включатся сами в момент открытия рынка.</p>
+      </div>
       <div class="sig-tfs" id="sig-tfs">
         <button type="button" data-tf="1M" class="on">1M</button>
         <button type="button" data-tf="5M">5M</button>
@@ -2768,6 +3015,13 @@
         ai_err_network: "Нет связи с сервером анализа. Проверьте интернет или VPN.",
         ai_err_bad_image: "Снимок получился некорректным. Попробуйте ещё раз.", close: "Закрыть",
         sig_active: "АКТИВНЫЙ", sig_recent: "ПОСЛЕДНИЕ 10 СИГНАЛОВ", sig_up: "ВВЕРХ", sig_down: "ВНИЗ",
+        mk_closed: "Рынок закрыт", mk_title: "Биржи отдыхают",
+        mk_text: "Forex и мировые биржи не торгуют в выходные. Сигналы вернутся, как только откроется рынок.",
+        mk_until: "До открытия рынка", mk_days: "дней", mk_hours: "часов", mk_minutes: "минут", mk_seconds: "секунд",
+        mk_at: "Откроется:", mk_weekend: "Выходные позади", mk_sessions: "Открытие торговых сессий", mk_first: "первой",
+        mk_sydney: "Сидней", mk_tokyo: "Токио", mk_london: "Лондон", mk_newyork: "Нью-Йорк",
+        mk_in: "через {t}", mk_d: "д", mk_h: "ч", mk_m: "мин",
+        mk_note: "Панель можно не закрывать — сигналы включатся сами в момент открытия рынка.",
         sig_open: "Открыть", sig_strength: "Сила", sig_empty: "Сигналов сейчас нет", sig_error: "Не удалось загрузить сигналы", sig_ago: "{n} мин назад", sig_now: "только что", sig_sec: "с", sig_until: "До обновления",
         buy_vip: "Купить VIP", vip_active: "VIP активен",
         nav_back: "Назад", nav_forward: "Вперёд", nav_reload: "Обновить", nav_home: "Главная Quotex",
@@ -2856,6 +3110,13 @@
         ai_err_network: "No connection to the analysis server. Check your internet or VPN.",
         ai_err_bad_image: "The snapshot came out wrong. Please try again.", close: "Close",
         sig_active: "ACTIVE", sig_recent: "LAST 10 SIGNALS", sig_up: "UP", sig_down: "DOWN",
+        mk_closed: "Market closed", mk_title: "Exchanges are resting",
+        mk_text: "Forex and world exchanges do not trade on weekends. Signals will be back as soon as the market opens.",
+        mk_until: "Until the market opens", mk_days: "days", mk_hours: "hours", mk_minutes: "minutes", mk_seconds: "seconds",
+        mk_at: "Opens:", mk_weekend: "Weekend passed", mk_sessions: "Trading sessions open", mk_first: "first",
+        mk_sydney: "Sydney", mk_tokyo: "Tokyo", mk_london: "London", mk_newyork: "New York",
+        mk_in: "in {t}", mk_d: "d", mk_h: "h", mk_m: "min",
+        mk_note: "You can keep this panel open — signals switch on by themselves when the market opens.",
         sig_open: "Open", sig_strength: "Strength", sig_empty: "No signals right now", sig_error: "Could not load signals", sig_ago: "{n} min ago", sig_now: "just now", sig_sec: "s", sig_until: "Until refresh",
         buy_vip: "Get VIP", vip_active: "VIP active",
         nav_back: "Back", nav_forward: "Forward", nav_reload: "Reload", nav_home: "Quotex home",
@@ -2944,6 +3205,13 @@
         ai_err_network: "Sem conexão com o servidor de análise. Verifique a internet ou a VPN.",
         ai_err_bad_image: "A captura saiu incorreta. Tente novamente.", close: "Fechar",
         sig_active: "ATIVO", sig_recent: "ÚLTIMOS 10 SINAIS", sig_up: "ACIMA", sig_down: "ABAIXO",
+        mk_closed: "Mercado fechado", mk_title: "As bolsas estão descansando",
+        mk_text: "O Forex e as bolsas mundiais não operam nos fins de semana. Os sinais voltam assim que o mercado abrir.",
+        mk_until: "Até a abertura do mercado", mk_days: "dias", mk_hours: "horas", mk_minutes: "minutos", mk_seconds: "segundos",
+        mk_at: "Abre:", mk_weekend: "Fim de semana passado", mk_sessions: "Abertura das sessões", mk_first: "primeira",
+        mk_sydney: "Sydney", mk_tokyo: "Tóquio", mk_london: "Londres", mk_newyork: "Nova York",
+        mk_in: "em {t}", mk_d: "d", mk_h: "h", mk_m: "min",
+        mk_note: "Pode deixar o painel aberto — os sinais ligam sozinhos quando o mercado abrir.",
         sig_open: "Abrir", sig_strength: "Força", sig_empty: "Não há sinais agora", sig_error: "Não foi possível carregar os sinais", sig_ago: "há {n} min", sig_now: "agora", sig_sec: "s", sig_until: "Até atualizar",
         buy_vip: "Comprar VIP", vip_active: "VIP ativo",
         nav_back: "Voltar", nav_forward: "Avançar", nav_reload: "Recarregar", nav_home: "Início Quotex",
@@ -3502,6 +3770,161 @@
     let sigLoading = false;
     let sigAgePaint = 0;
 
+    // ——— Расписание Forex: неделя с воскресенья 17:00 до пятницы 17:00 по Нью-Йорку ———
+    const FX_TZ = "America/New_York";
+    const FX_HOUR = 17;
+    const FX_SESSIONS = [
+      { key: "sydney", flag: "aud", tz: "Australia/Sydney", hour: null },
+      { key: "tokyo", flag: "jpy", tz: "Asia/Tokyo", hour: 9 },
+      { key: "london", flag: "gbp", tz: "Europe/London", hour: 8 },
+      { key: "newyork", flag: "usd", tz: "America/New_York", hour: 8 },
+    ];
+    const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    let mkTimer = null;
+    let mkSessionsPaint = 0;
+
+    const zoneFormats = new Map();
+    function zonedParts(ms, tz) {
+      if (!zoneFormats.has(tz)) {
+        zoneFormats.set(tz, new Intl.DateTimeFormat("en-US", {
+          timeZone: tz, hourCycle: "h23", weekday: "short", year: "numeric", month: "2-digit",
+          day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit",
+        }));
+      }
+      const parts = zoneFormats.get(tz).formatToParts(new Date(ms));
+      const get = (type) => parts.find((p) => p.type === type).value;
+      return { y: +get("year"), mo: +get("month"), d: +get("day"), h: +get("hour"), mi: +get("minute"), s: +get("second"), wd: WEEKDAYS.indexOf(get("weekday")) };
+    }
+
+    // UTC moment of a wall-clock hour in a time zone (handles daylight saving shifts).
+    function zonedTime(y, mo, d, h, tz) {
+      const wanted = Date.UTC(y, mo - 1, d, h);
+      let guess = wanted;
+      for (let i = 0; i < 3; i++) {
+        const p = zonedParts(guess, tz);
+        guess += wanted - Date.UTC(p.y, p.mo - 1, p.d, p.h, p.mi, p.s);
+      }
+      return guess;
+    }
+
+    function shiftDate(p, days) {
+      const dt = new Date(Date.UTC(p.y, p.mo - 1, p.d + days));
+      return { y: dt.getUTCFullYear(), mo: dt.getUTCMonth() + 1, d: dt.getUTCDate() };
+    }
+
+    function fxMarket(now) {
+      const p = zonedParts(now, FX_TZ);
+      const closed = p.wd === 6 || (p.wd === 5 && p.h >= FX_HOUR) || (p.wd === 0 && p.h < FX_HOUR);
+      if (!closed) return { open: true };
+      const fri = shiftDate(p, p.wd === 5 ? 0 : p.wd === 6 ? -1 : -2);
+      const sun = shiftDate(p, p.wd === 0 ? 0 : p.wd === 6 ? 1 : 2);
+      return {
+        open: false,
+        closedAt: zonedTime(fri.y, fri.mo, fri.d, FX_HOUR, FX_TZ),
+        opensAt: zonedTime(sun.y, sun.mo, sun.d, FX_HOUR, FX_TZ),
+      };
+    }
+
+    // Each session opens on the first Monday morning (local to its city) after the market reopens.
+    function sessionOpen(session, opensAt) {
+      if (session.hour === null) return opensAt;
+      const p = zonedParts(opensAt, session.tz);
+      const day = shiftDate(p, p.wd === 0 ? 1 : 0);
+      return zonedTime(day.y, day.mo, day.d, session.hour, session.tz);
+    }
+
+    function mkLeft(ms) {
+      const total = Math.max(0, Math.floor(ms / 60000));
+      const d = Math.floor(total / 1440);
+      const h = Math.floor((total % 1440) / 60);
+      const m = total % 60;
+      const parts = [];
+      if (d) parts.push(d + " " + t("mk_d"));
+      if (h) parts.push(h + " " + t("mk_h"));
+      if (!d) parts.push(m + " " + t("mk_m"));
+      return t("mk_in").replace("{t}", parts.join(" "));
+    }
+
+    function mkWhen(ms) {
+      return new Intl.DateTimeFormat(currentLang(), { weekday: "long", hour: "2-digit", minute: "2-digit" }).format(new Date(ms));
+    }
+
+    function mkTile(id, value) {
+      const el = $(id);
+      if (el.textContent === value) return;
+      el.textContent = value;
+      el.classList.remove("flip");
+      void el.offsetWidth;
+      el.classList.add("flip");
+    }
+
+    function renderMarket(state) {
+      const now = Date.now();
+      const left = Math.max(0, state.opensAt - now);
+      const sec = Math.floor(left / 1000);
+      mkTile("mk-d", String(Math.floor(sec / 86400)));
+      mkTile("mk-h", String(Math.floor((sec % 86400) / 3600)).padStart(2, "0"));
+      mkTile("mk-m", String(Math.floor((sec % 3600) / 60)).padStart(2, "0"));
+      mkTile("mk-s", String(sec % 60).padStart(2, "0"));
+      const done = Math.max(0, Math.min(1, (now - state.closedAt) / (state.opensAt - state.closedAt)));
+      $("mk-arc").style.strokeDashoffset = String(552.9 * (1 - done));
+      $("mk-progress").style.width = (done * 100).toFixed(2) + "%";
+      $("mk-pct").textContent = Math.floor(done * 100) + "%";
+      const at = $("mk-at");
+      at.replaceChildren(document.createTextNode(t("mk_at") + " "), Object.assign(document.createElement("b"), { textContent: mkWhen(state.opensAt) }));
+
+      if (now - mkSessionsPaint < 15000 && $("mk-sessions").childElementCount) return;
+      mkSessionsPaint = now;
+      const sessions = FX_SESSIONS.map((s) => ({ ...s, at: sessionOpen(s, state.opensAt) })).sort((a, b) => a.at - b.at);
+      $("mk-sessions").innerHTML = sessions.map((s, i) => {
+        const share = Math.max(0, Math.min(1, (now - state.closedAt) / (s.at - state.closedAt)));
+        return `<div class="mk-session${i === 0 ? " next" : ""}" style="animation-delay:${i * 80}ms">
+          ${sigFlag(s.flag)}
+          <div class="mk-city">
+            <b>${t("mk_" + s.key)}${i === 0 ? `<em>${t("mk_first")}</em>` : ""}</b>
+            <small>${mkWhen(s.at)}</small>
+            <span class="mk-bar"><i style="width:${(share * 100).toFixed(1)}%"></i></span>
+          </div>
+          <span class="mk-left">${mkLeft(s.at - now)}</span>
+        </div>`;
+      }).join("");
+    }
+
+    function stopMarketClock() {
+      clearInterval(mkTimer);
+      mkTimer = null;
+    }
+
+    // Returns true while the market is closed (the panel then shows the countdown instead of signals).
+    function showMarketState() {
+      const state = fxMarket(Date.now());
+      const panel = $("signals-panel");
+      panel.classList.toggle("closed", !state.open);
+      $("mk-closed").hidden = state.open;
+      if (state.open) {
+        stopMarketClock();
+        return false;
+      }
+      stopSigLoop();
+      ensureFlags().then(() => { mkSessionsPaint = 0; });
+      renderMarket(state);
+      if (!mkTimer) {
+        mkTimer = setInterval(() => {
+          if (panel.hidden) return stopMarketClock();
+          const next = fxMarket(Date.now());
+          if (next.open) {
+            stopMarketClock();
+            panel.classList.remove("closed");
+            $("mk-closed").hidden = true;
+            loadSignals();
+            return;
+          }
+          renderMarket(next);
+        }, 1000);
+      }
+      return true;
+    }
+
     function readSignalHistory() {
       try {
         const raw = JSON.parse(localStorage.getItem(SIG_HISTORY_KEY) || "[]");
@@ -3569,6 +3992,7 @@
         }
         paintTimer();
         if (!sigLoading && sigNextAt && Date.now() >= sigNextAt) loadSignals({ skeleton: false });
+        if (!fxMarket(Date.now()).open) showMarketState();
       }, 200);
     }
 
@@ -3682,7 +4106,7 @@
     }
 
     async function loadSignals(options) {
-      if (sigLoading) return;
+      if (sigLoading || showMarketState()) return;
       sigLoading = true;
       $("sig-refresh").classList.add("busy");
       const hasCard = !!$("sig-active").querySelector(".sig-card:not(.sig-sk)");
@@ -3727,6 +4151,7 @@
     $("sig-close").addEventListener("click", () => {
       $("signals-panel").hidden = true;
       stopSigLoop();
+      stopMarketClock();
     });
     $("sig-refresh").addEventListener("click", loadSignals);
     $("sig-tfs").addEventListener("click", (event) => {
