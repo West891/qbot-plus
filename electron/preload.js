@@ -1,17 +1,20 @@
-const { ipcRenderer } = require("electron");
+const { ipcRenderer, webFrame } = require("electron");
 
-(function openAccountWidget() {
+// Quotex widgets (qx-*, e.g. the account/balance block qx-usermenu-trigger) use closed shadow roots.
+// The preload runs in an isolated world, so the patch has to be installed in the page's own world,
+// before its scripts create the components.
+webFrame.executeJavaScript(`(() => {
   const original = Element.prototype.attachShadow;
   if (!original || original.__qbotOpen) return;
   function attachShadow(init) {
     const tag = String(this.localName || "").toLowerCase();
     const options = init && typeof init === "object" ? Object.assign({}, init) : {};
-    if (tag === "qx-usermenu-trigger") options.mode = "open";
+    if (tag.startsWith("qx-")) options.mode = "open";
     return original.call(this, options);
   }
   attachShadow.__qbotOpen = true;
   Element.prototype.attachShadow = attachShadow;
-})();
+})()`);
 
 document.addEventListener("qbot-header-balance-request", async (event) => {
   let detail = event.detail;

@@ -1,11 +1,10 @@
 /**
  * Редактор страницы брокера для отдельных аккаунтов: свой текст, цвет текста и фона, SVG-иконки.
  * Изменения хранятся в localStorage страницы брокера под ключом конкретного ID и применяются только для него.
- * Работает и внутри Shadow DOM (блок баланса Quotex — qx-usermenu-trigger).
  *
- * Что читает робот, менять нельзя: число баланса и любые суммы, поля ставки и времени, кнопки сделок,
- * вкладки пар и историю. В блоке баланса можно менять подписи и иконки; подписи там меняются только
- * визуально (через CSS), чтобы робот по-прежнему видел исходный текст («Demo account» и т.п.).
+ * Всё меняется только через CSS (текст — через ::after, иконка — фоновой картинкой), сама страница не
+ * трогается: робот по-прежнему читает исходные названия пар, кнопки сделок, «Demo Account» и т.д.
+ * Нельзя менять только текст с цифрами (баланс, суммы, счётчики). Работает и внутри Shadow DOM.
  */
 (function initQbotCustom(global) {
   const ACCOUNTS = ["9488323"];
@@ -14,7 +13,7 @@
   const SEP = " >>> ";
   const MAX_TEXT = 500;
   const MAX_SVG = 40000;
-  const MONEY = /(?:[$€₽£]\s?[\d.,]*\d)|(?:\d[\d\s.,]*\s?[$€₽£])/;
+  const DIGITS = /\d/;
 
   let rules = [];
   let enabled = true;
@@ -24,9 +23,6 @@
   let applyQueued = false;
   const observedRoots = new WeakSet();
   const styledRoots = new Set();
-  // Original text, icon and marks of every element we changed, so a change can be undone without
-  // a reload (a reload would also stop a running robot).
-  const originals = new Map();
 
   function accountId() {
     const id = global.__QBOT_ACCOUNT__ && global.__QBOT_ACCOUNT__.id;
@@ -63,18 +59,12 @@
     return parent && parent.nodeType === 11 && parent.host ? parent.host : parent;
   }
 
-  function composedContains(outer, inner) {
-    for (let n = inner; n; n = up(n)) if (n === outer) return true;
-    return false;
-  }
-
   function closestComposed(el, selector) {
     for (let n = el; n; n = up(n)) if (n.nodeType === 1 && n.matches(selector)) return n;
     return null;
   }
 
-  // Deepest element under the cursor, through open shadow roots. A click on an icon picks the whole <svg>:
-  // its inner shapes disappear once the icon is replaced.
+  // Deepest element under the cursor, through open shadow roots. A click on an icon picks the whole <svg>.
   function deepFromPoint(x, y) {
     let el = document.elementFromPoint(x, y);
     while (el && el.shadowRoot) {
@@ -172,101 +162,22 @@
     return found ? found.el : null;
   }
 
-  // ——— Что трогать нельзя ———
+  // ——— Что можно менять ———
 
-  function robotParts() {
-    const dom = global.QbotDom || {};
-    const hard = [];
-    const soft = [];
-    const add = (list, fn) => {
-      try {
-        const found = fn();
-        (Array.isArray(found) ? found : [found]).forEach((el) => { if (el && el.nodeType === 1) list.push(el); });
-      } catch (e) {
-        /* элемента сейчас нет */
-      }
-    };
-    add(hard, () => dom.raw && dom.raw.findBalance && dom.raw.findBalance());
-    add(hard, () => dom.findTradeDirectionButton && dom.findTradeDirectionButton("UP"));
-    add(hard, () => dom.findTradeDirectionButton && dom.findTradeDirectionButton("DOWN"));
-    add(hard, () => dom.collectPairTabs && dom.collectPairTabs());
-    add(hard, () => Array.from(document.querySelectorAll("div.lCITV")).map((row) => row.parentElement || row));
-    add(soft, () => dom.raw && dom.raw.findUserMenu && dom.raw.findUserMenu());
-    add(soft, () => document.querySelector("qx-usermenu-trigger"));
-    return { hard, soft };
+  function isOwn(el) {
+    return !el || !!closestComposed(el, "[data-qbot-heal], [data-qbot-custom-ui], #qbot-header-dock, #qbot-trading-modal-root");
   }
 
-  // { reason } when the element must not be changed, otherwise { visual } — true inside the balance block.
-  function protection(el) {
-    if (!el || closestComposed(el, "[data-qbot-heal], [data-qbot-custom-ui], #qbot-header-dock")) return { reason: "own" };
-    if (el.matches("input, textarea, select") || el.querySelector("input, textarea, select")) return { reason: "input" };
-    const text = el.textContent || "";
-    if (MONEY.test(text)) return { reason: "money" };
-    const { hard, soft } = robotParts();
-    for (const part of hard) {
-      if (part === el || composedContains(part, el) || composedContains(el, part)) return { reason: "robot" };
-    }
-    for (const block of soft) {
-      if (block === el || composedContains(el, block)) return { reason: "block" };
-      if (composedContains(block, el)) return /\d/.test(text) ? { reason: "money" } : { visual: true };
-    }
-    return { visual: false };
+  function isSvg(el) {
+    return !!el && el.tagName && el.tagName.toLowerCase() === "svg";
   }
 
-  // ——— Применение изменений ———
-
-  function targetSvg(el) {
-    if (!el) return null;
-    if (el.tagName && el.tagName.toLowerCase() === "svg") return el;
-    return el.closest("svg") || el.querySelector("svg");
+  function visibleText(el) {
+    if (isSvg(el) || el.matches("input, textarea, select")) return "";
+    return (el.textContent || "").replace(/\s+/g, " ").trim();
   }
 
-  function ownTextNodes(el) {
-    return Array.from(el.childNodes).filter((n) => n.nodeType === 3 && n.nodeValue.trim());
-  }
-
-  function remember(el) {
-    if (originals.has(el)) return originals.get(el);
-    const svg = targetSvg(el);
-    const orig = {
-      leaf: el.children.length ? null : el.textContent,
-      nodes: el.children.length ? Array.from(el.childNodes).filter((n) => n.nodeType === 3).map((n) => [n, n.nodeValue]) : [],
-      svg: svg ? { el: svg, viewBox: svg.getAttribute("viewBox"), children: Array.from(svg.childNodes).map((n) => n.cloneNode(true)) } : null,
-    };
-    originals.set(el, orig);
-    return orig;
-  }
-
-  function restore(el) {
-    const orig = el && originals.get(el);
-    if (!orig) return;
-    originals.delete(el);
-    el.removeAttribute("data-qbot-vt");
-    if (orig.leaf !== null && el.textContent !== orig.leaf) el.textContent = orig.leaf;
-    orig.nodes.forEach(([node, value]) => { if (node.nodeValue !== value) node.nodeValue = value; });
-    if (orig.svg && orig.svg.el.hasAttribute("data-qbot-custom-svg")) {
-      const svg = orig.svg.el;
-      if (orig.svg.viewBox === null) svg.removeAttribute("viewBox");
-      else svg.setAttribute("viewBox", orig.svg.viewBox);
-      svg.replaceChildren(...orig.svg.children.map((n) => n.cloneNode(true)));
-      svg.removeAttribute("data-qbot-custom-svg");
-    }
-  }
-
-  function restoreAll() {
-    Array.from(originals.keys()).forEach(restore);
-  }
-
-  function setText(el, text) {
-    if (!el.children.length) {
-      if (el.textContent !== text) el.textContent = text;
-      return;
-    }
-    const nodes = ownTextNodes(el);
-    if (!nodes.length) return;
-    if (nodes[0].nodeValue !== text) nodes[0].nodeValue = text;
-    nodes.slice(1).forEach((n) => { if (n.nodeValue) n.nodeValue = ""; });
-  }
+  // ——— Применение: только CSS ———
 
   // Without xmlns the parser puts the shapes in no namespace and the browser does not draw them.
   function withSvgNamespace(markup) {
@@ -292,17 +203,6 @@
     return svg.outerHTML;
   }
 
-  function applySvg(el, markup, mark) {
-    const svg = targetSvg(el);
-    if (!svg || svg.getAttribute("data-qbot-custom-svg") === mark) return;
-    const parsed = new DOMParser().parseFromString(withSvgNamespace(markup), "image/svg+xml").documentElement;
-    const viewBox = parsed.getAttribute("viewBox");
-    if (viewBox) svg.setAttribute("viewBox", viewBox);
-    else svg.removeAttribute("viewBox");
-    svg.replaceChildren(...Array.from(parsed.childNodes).map((n) => document.importNode(n, true)));
-    svg.setAttribute("data-qbot-custom-svg", mark);
-  }
-
   function cssString(text) {
     return '"' + String(text).replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\A ") + '"';
   }
@@ -310,16 +210,24 @@
   function cssFor(rule, sel) {
     const out = [];
     if (rule.color) {
-      out.push(`${sel}, ${sel} * { color: ${rule.color} !important; -webkit-text-fill-color: ${rule.color} !important; }`);
+      out.push(`${sel}, ${sel} *, ${sel}::after { color: ${rule.color} !important; -webkit-text-fill-color: ${rule.color} !important; }`);
       out.push(`${sel} [fill]:not([fill="none"]), ${sel}[fill]:not([fill="none"]) { fill: ${rule.color} !important; }`);
       out.push(`${sel} [stroke]:not([stroke="none"]), ${sel}[stroke]:not([stroke="none"]) { stroke: ${rule.color} !important; }`);
+      out.push(`${sel} { fill: ${rule.color} !important; }`);
     }
-    if (rule.bg) out.push(`${sel} { background: ${rule.bg} !important; }`);
-    // Text shown only on screen: the element keeps its DOM text for the robot.
-    if (rule.visual && typeof rule.text === "string") {
-      const mark = `[data-qbot-vt="${rule.at}"]`;
-      out.push(`${mark} { font-size: 0 !important; line-height: ${rule.lineHeight || 18}px !important; }`);
-      out.push(`${mark}::after { content: ${cssString(rule.text)}; font-size: ${rule.fontSize || 14}px; white-space: pre; }`);
+    if (rule.bg) out.push(`${sel} { background-color: ${rule.bg} !important; }`);
+    // The page keeps its own text (the robot reads it); the new text is only drawn on top.
+    if (typeof rule.text === "string") {
+      const size = rule.fontSize || 14;
+      out.push(`${sel} { font-size: 0 !important; line-height: ${rule.lineHeight || Math.round(size * 1.25)}px !important; }`);
+      out.push(`${sel} > * { font-size: ${size}px !important; }`);
+      out.push(`${sel}::after { content: ${cssString(rule.text)}; font-size: ${size}px !important; white-space: pre-wrap; }`);
+    }
+    // The icon is drawn as a background over the original shapes, which are hidden.
+    if (rule.svg) {
+      const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(withSvgNamespace(rule.svg));
+      out.push(`${sel} > * { visibility: hidden !important; }`);
+      out.push(`${sel} { background-image: url("${url}") !important; background-position: center !important; background-size: contain !important; background-repeat: no-repeat !important; }`);
     }
     return out.join("\n");
   }
@@ -338,37 +246,24 @@
   }
 
   function activeRules() {
-    if (!allowed() || !enabled) return preview && allowed() ? [preview] : [];
+    if (!allowed()) return [];
+    if (!enabled) return preview ? [preview] : [];
     const list = rules.filter((r) => !preview || r.selector !== preview.selector);
     return preview ? list.concat(preview) : list;
   }
 
   function applyAll() {
     applyQueued = false;
-    if (!allowed()) restoreAll();
     const cssByRoot = new Map();
     for (const rule of activeRules()) {
       const found = resolve(rule.selector);
       if (!found) continue;
-      const { el, root, local } = found;
-      watchRoot(root);
-      const css = cssFor(rule, local);
-      if (css) cssByRoot.set(root, (cssByRoot.get(root) || "") + css + "\n");
-      if (protection(el).reason) continue;
-      if (typeof rule.text !== "string" && !rule.svg) continue;
-      remember(el);
-      if (typeof rule.text === "string") {
-        if (rule.visual) {
-          if (el.getAttribute("data-qbot-vt") !== String(rule.at)) el.setAttribute("data-qbot-vt", String(rule.at));
-        } else {
-          setText(el, rule.text);
-        }
-      }
-      if (rule.svg) applySvg(el, rule.svg, String(rule.at || 0));
+      watchRoot(found.root);
+      const css = cssFor(rule, found.local);
+      if (css) cssByRoot.set(found.root, (cssByRoot.get(found.root) || "") + css + "\n");
     }
     for (const root of new Set([...styledRoots, ...cssByRoot.keys()])) {
       const css = cssByRoot.get(root) || "";
-      if (!css && !styledRoots.has(root)) continue;
       const style = styleFor(root);
       if (style.textContent !== css) style.textContent = css;
     }
@@ -377,20 +272,16 @@
   function queueApply() {
     if (applyQueued) return;
     applyQueued = true;
-    setTimeout(() => requestAnimationFrame(applyAll), 120);
+    // A plain timer: requestAnimationFrame pauses while the window is in the background.
+    setTimeout(applyAll, 150);
   }
 
+  // Shadow roots appear later and components may rebuild their content (dropping our <style>).
   function watchRoot(root) {
     const target = root === document ? document.body : root;
     if (!target || observedRoots.has(target)) return;
     observedRoots.add(target);
-    new MutationObserver(queueApply).observe(target, {
-      childList: true,
-      subtree: true,
-      characterData: true,
-      attributes: true,
-      attributeFilter: ["data-qbot-vt", "data-qbot-custom-svg"],
-    });
+    new MutationObserver(queueApply).observe(target, { childList: true, subtree: true });
   }
 
   // ——— Выбор элемента на странице ———
@@ -423,17 +314,15 @@
 
   function describe(el, path) {
     const rule = rules.find((r) => r.selector === path) || null;
-    const svg = targetSvg(el);
     const style = getComputedStyle(el);
-    const visual = !!protection(el).visual;
-    const leaf = !el.children.length;
-    const text = leaf ? (el.textContent || "").trim() : ownTextNodes(el).map((n) => n.nodeValue.trim()).join(" ");
+    const text = visibleText(el);
+    const digits = DIGITS.test(text);
     return {
       tag: el.tagName.toLowerCase(),
       text: text.slice(0, MAX_TEXT),
-      hasText: !!text && (!visual || leaf),
-      hasSvg: !!svg,
-      visual,
+      hasText: !!text && !digits,
+      digits,
+      hasSvg: isSvg(el),
       color: hex(style.color),
       bg: hex(style.backgroundColor),
       rule,
@@ -472,17 +361,16 @@
       if (!el || own(el) || el === hover) return;
       hover = el;
       if (hoverBox) hoverBox.remove();
-      const locked = protection(el).reason;
-      hoverBox = boxFor(el, locked ? "🔒 нельзя менять" : el.tagName.toLowerCase(), locked ? "#fb7185" : "#a78bfa");
+      const label = isOwn(el) ? "🔒 Q-bot" : DIGITS.test(visibleText(el)) ? el.tagName.toLowerCase() + " · цифры — только цвет" : el.tagName.toLowerCase();
+      hoverBox = boxFor(el, label, isOwn(el) ? "#fb7185" : "#a78bfa");
     };
     const onClick = (event) => {
       block(event);
       const el = deepFromPoint(event.clientX, event.clientY);
       if (!el || own(el)) return;
       finish();
-      const { reason } = protection(el);
-      if (reason) {
-        picked = { ok: false, error: "protected", reason };
+      if (isOwn(el)) {
+        picked = { ok: false, error: "protected", reason: "own" };
         return;
       }
       const selector = buildPath(el);
@@ -525,17 +413,23 @@
     const selector = String(src.selector || "").slice(0, 900);
     const el = query(selector);
     if (!selector || !el) return { error: "missing" };
-    const guard = protection(el);
-    if (guard.reason) return { error: "protected", reason: guard.reason };
+    if (isOwn(el)) return { error: "protected", reason: "own" };
     const color = /^#[0-9a-f]{6}$/i.test(src.color || "") ? src.color : null;
     const bg = /^#[0-9a-f]{6}$/i.test(src.bg || "") ? src.bg : null;
     const text = typeof src.text === "string" ? src.text.slice(0, MAX_TEXT) : null;
-    if (guard.visual && text !== null && el.children.length) return { error: "leaf" };
+    if (text !== null && DIGITS.test(visibleText(el))) return { error: "digits" };
     const svg = src.svg ? sanitizeSvg(src.svg) : null;
     if (src.svg && !svg) return { error: "svg" };
-    const style = getComputedStyle(el);
-    const fontSize = parseFloat(style.fontSize) || 14;
-    const lineHeight = parseFloat(style.lineHeight) || Math.round(fontSize * 1.25);
+    if (svg && !isSvg(el)) return { error: "svg_target" };
+    // Measure the original size before our own font-size: 0 is in place.
+    const old = (preview && preview.selector === selector ? preview : null) || rules.find((r) => r.selector === selector);
+    let fontSize = old && old.fontSize;
+    let lineHeight = old && old.lineHeight;
+    if (!fontSize) {
+      const style = getComputedStyle(el);
+      fontSize = parseFloat(style.fontSize) || 14;
+      lineHeight = parseFloat(style.lineHeight) || Math.round(fontSize * 1.25);
+    }
     return {
       rule: {
         selector,
@@ -544,9 +438,8 @@
         color,
         bg,
         svg,
-        visual: !!guard.visual,
-        fontSize: guard.visual ? fontSize : undefined,
-        lineHeight: guard.visual ? lineHeight : undefined,
+        fontSize,
+        lineHeight,
         at: Date.now(),
       },
     };
@@ -574,7 +467,6 @@
     if (action === "pick") return startPick();
     if (action === "cancel") {
       stopPick();
-      if (preview) restore(query(preview.selector));
       preview = null;
       picked = null;
       applyAll();
@@ -583,7 +475,6 @@
     if (action === "preview") {
       const result = cleanRule(payload);
       if (result.error) return { ok: false, error: result.error };
-      restore(query(result.rule.selector));
       preview = result.rule;
       applyAll();
       return { ok: true };
@@ -594,7 +485,6 @@
       const empty = result.rule.text === null && !result.rule.color && !result.rule.bg && !result.rule.svg;
       rules = rules.filter((r) => r.selector !== result.rule.selector);
       if (!empty) rules.push(result.rule);
-      restore(query(result.rule.selector));
       preview = null;
       picked = null;
       save();
@@ -618,21 +508,18 @@
       return { ok: true };
     }
     if (action === "remove") {
-      const [gone] = rules.splice(Number(payload), 1);
-      if (gone) restore(query(gone.selector));
+      rules.splice(Number(payload), 1);
       save();
       applyAll();
       return { ok: true };
     }
     if (action === "toggle") {
       enabled = !!payload;
-      if (!enabled) restoreAll();
       save();
       applyAll();
       return { ok: true };
     }
     if (action === "reset") {
-      restoreAll();
       rules = [];
       save();
       applyAll();
