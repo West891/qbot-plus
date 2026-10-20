@@ -1,12 +1,17 @@
 /**
  * Редактор страницы брокера для отдельных аккаунтов: свой текст, цвет текста и фона, SVG-иконки.
  * Изменения хранятся в localStorage страницы брокера под ключом конкретного ID и применяются только для него.
- * Элементы, которые читает робот (баланс, суммы, поля ставки, кнопки сделок, пары, история), менять нельзя.
+ * Работает и внутри Shadow DOM (блок баланса Quotex — qx-usermenu-trigger).
+ *
+ * Что читает робот, менять нельзя: число баланса и любые суммы, поля ставки и времени, кнопки сделок,
+ * вкладки пар и историю. В блоке баланса можно менять подписи и иконки; подписи там меняются только
+ * визуально (через CSS), чтобы робот по-прежнему видел исходный текст («Demo account» и т.п.).
  */
 (function initQbotCustom(global) {
   const ACCOUNTS = ["9488323"];
   const STORE_PREFIX = "qbot_page_custom:";
   const STYLE_ID = "qbot-custom-style";
+  const SEP = " >>> ";
   const MAX_TEXT = 500;
   const MAX_SVG = 40000;
   const MONEY = /(?:[$€₽£]\s?[\d.,]*\d)|(?:\d[\d\s.,]*\s?[$€₽£])/;
@@ -16,10 +21,11 @@
   let preview = null;
   let picking = null;
   let picked = null;
-  let observer = null;
   let applyQueued = false;
-  // Original text and icon of every element we changed, so a change can be undone without a reload
-  // (a reload would also stop a running robot).
+  const observedRoots = new WeakSet();
+  const styledRoots = new Set();
+  // Original text, icon and marks of every element we changed, so a change can be undone without
+  // a reload (a reload would also stop a running robot).
   const originals = new Map();
 
   function accountId() {
@@ -50,49 +56,164 @@
     localStorage.setItem(storeKey(), JSON.stringify({ enabled, rules }));
   }
 
-  // ——— Что трогать нельзя ———
+  // ——— DOM с учётом Shadow DOM ———
 
-  function criticalElements() {
-    const dom = global.QbotDom || {};
-    const list = [];
-    const add = (fn) => {
-      try {
-        const found = fn();
-        if (Array.isArray(found)) list.push(...found);
-        else if (found) list.push(found);
-      } catch (e) {
-        /* элемента сейчас нет */
-      }
-    };
-    add(() => dom.raw && dom.raw.findBalance && dom.raw.findBalance());
-    add(() => dom.raw && dom.raw.findUserMenu && dom.raw.findUserMenu());
-    add(() => document.querySelector("qx-usermenu-trigger"));
-    add(() => dom.findTradeDirectionButton && dom.findTradeDirectionButton("UP"));
-    add(() => dom.findTradeDirectionButton && dom.findTradeDirectionButton("DOWN"));
-    add(() => dom.collectPairTabs && dom.collectPairTabs());
-    add(() => Array.from(document.querySelectorAll("div.lCITV")).map((row) => row.parentElement || row));
-    return list.filter((el) => el && el.nodeType === 1);
+  function up(node) {
+    const parent = node.parentNode;
+    return parent && parent.nodeType === 11 && parent.host ? parent.host : parent;
   }
 
-  function protectedReason(el) {
-    if (!el || el.closest("[data-qbot-heal], [data-qbot-custom-ui], #qbot-header-dock")) return "own";
-    if (el.matches("input, textarea, select") || el.querySelector("input, textarea, select")) return "input";
-    if (MONEY.test(el.textContent || "")) return "money";
-    for (const crit of criticalElements()) {
-      if (crit === el || crit.contains(el) || el.contains(crit)) return "robot";
+  function composedContains(outer, inner) {
+    for (let n = inner; n; n = up(n)) if (n === outer) return true;
+    return false;
+  }
+
+  function closestComposed(el, selector) {
+    for (let n = el; n; n = up(n)) if (n.nodeType === 1 && n.matches(selector)) return n;
+    return null;
+  }
+
+  // Deepest element under the cursor, through open shadow roots. A click on an icon picks the whole <svg>:
+  // its inner shapes disappear once the icon is replaced.
+  function deepFromPoint(x, y) {
+    let el = document.elementFromPoint(x, y);
+    while (el && el.shadowRoot) {
+      const inner = el.shadowRoot.elementFromPoint(x, y);
+      if (!inner || inner === el) break;
+      el = inner;
+    }
+    return (el && el.closest && el.closest("svg")) || el;
+  }
+
+  function cssEscape(value) {
+    return global.CSS && CSS.escape ? CSS.escape(value) : String(value).replace(/[^\w-]/g, "\\$&");
+  }
+
+  function stepFor(el) {
+    if (el.id && !/\d{4,}/.test(el.id)) return "#" + cssEscape(el.id);
+    let step = el.tagName.toLowerCase();
+    for (const attr of ["data-test", "data-testid", "data-qa", "name", "aria-label", "type", "role"]) {
+      const value = el.getAttribute(attr);
+      if (value && value.length < 40) {
+        step += "[" + attr + '="' + value.replace(/"/g, '\\"') + '"]';
+        break;
+      }
+    }
+    const classes = Array.from(el.classList || [])
+      .filter((c) => c.length < 40 && !/^(active|hover|focus|open|selected|disabled)$/i.test(c))
+      .slice(0, 3);
+    if (classes.length) step += "." + classes.map(cssEscape).join(".");
+    return step;
+  }
+
+  // Unique selector for el inside its own root (document or a shadow root).
+  function selectorIn(el, root) {
+    const unique = (selector) => {
+      try {
+        const found = root.querySelectorAll(selector);
+        return found.length === 1 && found[0] === el;
+      } catch (e) {
+        return false;
+      }
+    };
+    const parts = [];
+    let node = el;
+    for (let depth = 0; node && node.nodeType === 1 && depth < 8; depth++, node = node.parentElement) {
+      let step = stepFor(node);
+      const parent = node.parentElement || (node.parentNode === root ? root : null);
+      if (parent && !step.startsWith("#")) {
+        const same = Array.from(parent.children).filter((c) => c.tagName === node.tagName);
+        if (same.length > 1) step += ":nth-of-type(" + (same.indexOf(node) + 1) + ")";
+      }
+      parts.unshift(step);
+      const selector = parts.join(" > ");
+      if (unique(selector)) return selector;
+      if (step.startsWith("#")) break;
+    }
+    const selector = parts.join(" > ");
+    return unique(selector) ? selector : null;
+  }
+
+  // "host selector >>> selector inside its shadow root >>> …"
+  function buildPath(el) {
+    const segments = [];
+    let node = el;
+    while (node) {
+      const root = node.getRootNode();
+      const segment = selectorIn(node, root);
+      if (!segment) return null;
+      segments.unshift(segment);
+      if (root.nodeType === 11 && root.host) node = root.host;
+      else break;
+    }
+    return segments.join(SEP);
+  }
+
+  function resolve(path) {
+    const segments = String(path || "").split(SEP);
+    let root = document;
+    for (let i = 0; i < segments.length; i++) {
+      let el = null;
+      try {
+        el = root.querySelector(segments[i]);
+      } catch (e) {
+        return null;
+      }
+      if (!el) return null;
+      if (i === segments.length - 1) return { el, root, local: segments[i] };
+      root = el.shadowRoot;
+      if (!root) return null;
     }
     return null;
   }
 
-  // ——— Применение изменений ———
-
-  function query(selector) {
-    try {
-      return document.querySelector(selector);
-    } catch (e) {
-      return null;
-    }
+  function query(path) {
+    const found = resolve(path);
+    return found ? found.el : null;
   }
+
+  // ——— Что трогать нельзя ———
+
+  function robotParts() {
+    const dom = global.QbotDom || {};
+    const hard = [];
+    const soft = [];
+    const add = (list, fn) => {
+      try {
+        const found = fn();
+        (Array.isArray(found) ? found : [found]).forEach((el) => { if (el && el.nodeType === 1) list.push(el); });
+      } catch (e) {
+        /* элемента сейчас нет */
+      }
+    };
+    add(hard, () => dom.raw && dom.raw.findBalance && dom.raw.findBalance());
+    add(hard, () => dom.findTradeDirectionButton && dom.findTradeDirectionButton("UP"));
+    add(hard, () => dom.findTradeDirectionButton && dom.findTradeDirectionButton("DOWN"));
+    add(hard, () => dom.collectPairTabs && dom.collectPairTabs());
+    add(hard, () => Array.from(document.querySelectorAll("div.lCITV")).map((row) => row.parentElement || row));
+    add(soft, () => dom.raw && dom.raw.findUserMenu && dom.raw.findUserMenu());
+    add(soft, () => document.querySelector("qx-usermenu-trigger"));
+    return { hard, soft };
+  }
+
+  // { reason } when the element must not be changed, otherwise { visual } — true inside the balance block.
+  function protection(el) {
+    if (!el || closestComposed(el, "[data-qbot-heal], [data-qbot-custom-ui], #qbot-header-dock")) return { reason: "own" };
+    if (el.matches("input, textarea, select") || el.querySelector("input, textarea, select")) return { reason: "input" };
+    const text = el.textContent || "";
+    if (MONEY.test(text)) return { reason: "money" };
+    const { hard, soft } = robotParts();
+    for (const part of hard) {
+      if (part === el || composedContains(part, el) || composedContains(el, part)) return { reason: "robot" };
+    }
+    for (const block of soft) {
+      if (block === el || composedContains(el, block)) return { reason: "block" };
+      if (composedContains(block, el)) return /\d/.test(text) ? { reason: "money" } : { visual: true };
+    }
+    return { visual: false };
+  }
+
+  // ——— Применение изменений ———
 
   function targetSvg(el) {
     if (!el) return null;
@@ -120,6 +241,7 @@
     const orig = el && originals.get(el);
     if (!orig) return;
     originals.delete(el);
+    el.removeAttribute("data-qbot-vt");
     if (orig.leaf !== null && el.textContent !== orig.leaf) el.textContent = orig.leaf;
     orig.nodes.forEach(([node, value]) => { if (node.nodeValue !== value) node.nodeValue = value; });
     if (orig.svg && orig.svg.el.hasAttribute("data-qbot-custom-svg")) {
@@ -181,8 +303,11 @@
     svg.setAttribute("data-qbot-custom-svg", mark);
   }
 
-  function cssFor(rule) {
-    const sel = rule.selector;
+  function cssString(text) {
+    return '"' + String(text).replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\A ") + '"';
+  }
+
+  function cssFor(rule, sel) {
     const out = [];
     if (rule.color) {
       out.push(`${sel}, ${sel} * { color: ${rule.color} !important; -webkit-text-fill-color: ${rule.color} !important; }`);
@@ -190,7 +315,26 @@
       out.push(`${sel} [stroke]:not([stroke="none"]), ${sel}[stroke]:not([stroke="none"]) { stroke: ${rule.color} !important; }`);
     }
     if (rule.bg) out.push(`${sel} { background: ${rule.bg} !important; }`);
+    // Text shown only on screen: the element keeps its DOM text for the robot.
+    if (rule.visual && typeof rule.text === "string") {
+      const mark = `[data-qbot-vt="${rule.at}"]`;
+      out.push(`${mark} { font-size: 0 !important; line-height: ${rule.lineHeight || 18}px !important; }`);
+      out.push(`${mark}::after { content: ${cssString(rule.text)}; font-size: ${rule.fontSize || 14}px; white-space: pre; }`);
+    }
     return out.join("\n");
+  }
+
+  function styleFor(root) {
+    const isDoc = root === document;
+    let style = isDoc ? document.getElementById(STYLE_ID) : root.querySelector("#" + STYLE_ID);
+    if (!style) {
+      style = document.createElement("style");
+      style.id = STYLE_ID;
+      style.setAttribute("data-qbot-custom-ui", "");
+      (isDoc ? document.head || document.documentElement : root).appendChild(style);
+    }
+    styledRoots.add(root);
+    return style;
   }
 
   function activeRules() {
@@ -202,23 +346,31 @@
   function applyAll() {
     applyQueued = false;
     if (!allowed()) restoreAll();
-    const list = activeRules();
-    let style = document.getElementById(STYLE_ID);
-    const css = list.map(cssFor).filter(Boolean).join("\n");
-    if (css && !style) {
-      style = document.createElement("style");
-      style.id = STYLE_ID;
-      style.setAttribute("data-qbot-custom-ui", "");
-      (document.head || document.documentElement).appendChild(style);
-    }
-    if (style && style.textContent !== css) style.textContent = css;
-    for (const rule of list) {
-      const el = query(rule.selector);
-      if (!el || protectedReason(el) === "robot") continue;
+    const cssByRoot = new Map();
+    for (const rule of activeRules()) {
+      const found = resolve(rule.selector);
+      if (!found) continue;
+      const { el, root, local } = found;
+      watchRoot(root);
+      const css = cssFor(rule, local);
+      if (css) cssByRoot.set(root, (cssByRoot.get(root) || "") + css + "\n");
+      if (protection(el).reason) continue;
       if (typeof rule.text !== "string" && !rule.svg) continue;
       remember(el);
-      if (typeof rule.text === "string") setText(el, rule.text);
+      if (typeof rule.text === "string") {
+        if (rule.visual) {
+          if (el.getAttribute("data-qbot-vt") !== String(rule.at)) el.setAttribute("data-qbot-vt", String(rule.at));
+        } else {
+          setText(el, rule.text);
+        }
+      }
       if (rule.svg) applySvg(el, rule.svg, String(rule.at || 0));
+    }
+    for (const root of new Set([...styledRoots, ...cssByRoot.keys()])) {
+      const css = cssByRoot.get(root) || "";
+      if (!css && !styledRoots.has(root)) continue;
+      const style = styleFor(root);
+      if (style.textContent !== css) style.textContent = css;
     }
   }
 
@@ -228,10 +380,17 @@
     setTimeout(() => requestAnimationFrame(applyAll), 120);
   }
 
-  function watch() {
-    if (observer || !document.body) return;
-    observer = new MutationObserver(queueApply);
-    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+  function watchRoot(root) {
+    const target = root === document ? document.body : root;
+    if (!target || observedRoots.has(target)) return;
+    observedRoots.add(target);
+    new MutationObserver(queueApply).observe(target, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ["data-qbot-vt", "data-qbot-custom-svg"],
+    });
   }
 
   // ——— Выбор элемента на странице ———
@@ -262,16 +421,19 @@
     return "#" + [m[1], m[2], m[3]].map((v) => Number(v).toString(16).padStart(2, "0")).join("");
   }
 
-  function describe(el) {
-    const rule = rules.find((r) => query(r.selector) === el) || null;
+  function describe(el, path) {
+    const rule = rules.find((r) => r.selector === path) || null;
     const svg = targetSvg(el);
     const style = getComputedStyle(el);
-    const text = el.children.length ? ownTextNodes(el).map((n) => n.nodeValue.trim()).join(" ") : (el.textContent || "").trim();
+    const visual = !!protection(el).visual;
+    const leaf = !el.children.length;
+    const text = leaf ? (el.textContent || "").trim() : ownTextNodes(el).map((n) => n.nodeValue.trim()).join(" ");
     return {
       tag: el.tagName.toLowerCase(),
       text: text.slice(0, MAX_TEXT),
-      hasText: !!text,
+      hasText: !!text && (!visual || leaf),
       hasSvg: !!svg,
+      visual,
       color: hex(style.color),
       bg: hex(style.backgroundColor),
       rule,
@@ -306,29 +468,29 @@
       event.stopImmediatePropagation();
     };
     const onMove = (event) => {
-      const el = document.elementFromPoint(event.clientX, event.clientY);
+      const el = deepFromPoint(event.clientX, event.clientY);
       if (!el || own(el) || el === hover) return;
       hover = el;
       if (hoverBox) hoverBox.remove();
-      const locked = protectedReason(el);
+      const locked = protection(el).reason;
       hoverBox = boxFor(el, locked ? "🔒 нельзя менять" : el.tagName.toLowerCase(), locked ? "#fb7185" : "#a78bfa");
     };
     const onClick = (event) => {
       block(event);
-      const el = document.elementFromPoint(event.clientX, event.clientY);
+      const el = deepFromPoint(event.clientX, event.clientY);
       if (!el || own(el)) return;
       finish();
-      const reason = protectedReason(el);
+      const { reason } = protection(el);
       if (reason) {
         picked = { ok: false, error: "protected", reason };
         return;
       }
-      const selector = global.QbotHeal && global.QbotHeal.selectorFor(el);
+      const selector = buildPath(el);
       if (!selector) {
         picked = { ok: false, error: "selector" };
         return;
       }
-      picked = { ok: true, selector, ...describe(el) };
+      picked = { ok: true, selector, ...describe(el, selector) };
       const box = boxFor(el, "✓ выбран", "#34d399");
       setTimeout(() => box.remove(), 1400);
     };
@@ -360,16 +522,20 @@
 
   function cleanRule(input) {
     const src = input && typeof input === "object" ? input : {};
-    const selector = String(src.selector || "").slice(0, 600);
+    const selector = String(src.selector || "").slice(0, 900);
     const el = query(selector);
     if (!selector || !el) return { error: "missing" };
-    const reason = protectedReason(el);
-    if (reason) return { error: "protected", reason };
+    const guard = protection(el);
+    if (guard.reason) return { error: "protected", reason: guard.reason };
     const color = /^#[0-9a-f]{6}$/i.test(src.color || "") ? src.color : null;
     const bg = /^#[0-9a-f]{6}$/i.test(src.bg || "") ? src.bg : null;
     const text = typeof src.text === "string" ? src.text.slice(0, MAX_TEXT) : null;
+    if (guard.visual && text !== null && el.children.length) return { error: "leaf" };
     const svg = src.svg ? sanitizeSvg(src.svg) : null;
     if (src.svg && !svg) return { error: "svg" };
+    const style = getComputedStyle(el);
+    const fontSize = parseFloat(style.fontSize) || 14;
+    const lineHeight = parseFloat(style.lineHeight) || Math.round(fontSize * 1.25);
     return {
       rule: {
         selector,
@@ -378,6 +544,9 @@
         color,
         bg,
         svg,
+        visual: !!guard.visual,
+        fontSize: guard.visual ? fontSize : undefined,
+        lineHeight: guard.visual ? lineHeight : undefined,
         at: Date.now(),
       },
     };
@@ -398,7 +567,7 @@
   function api(action, payload) {
     if (!allowed()) return { ok: false, error: "account", allowed: false };
     load();
-    watch();
+    watchRoot(document);
     if (action === "state") {
       return { ok: true, allowed: true, enabled, picking: !!picking, picked, rules: summaryRules() };
     }
@@ -436,7 +605,7 @@
       const rule = rules[Number(payload)];
       const el = rule && query(rule.selector);
       if (!el) return { ok: false, error: "missing" };
-      picked = { ok: true, selector: rule.selector, ...describe(el), rule };
+      picked = { ok: true, selector: rule.selector, ...describe(el, rule.selector), rule };
       return { ok: true };
     }
     if (action === "show") {
@@ -481,7 +650,7 @@
     seenId = id;
     if (allowed()) {
       load();
-      watch();
+      watchRoot(document);
     } else {
       preview = null;
     }

@@ -1872,6 +1872,8 @@
     .cust-chips i b { width: 9px; height: 9px; border-radius: 3px; }
     .cust-reset { width: 100%; height: 32px; margin-top: 8px; font-size: 12px; color: #fda4af; background: transparent; border: 1px dashed rgba(251, 113, 133, 0.4); }
     .cust-reset[hidden] { display: none; }
+    .cust-hint { margin: 0; padding: 7px 10px; border-radius: 9px; font-size: 11.5px; line-height: 1.45; color: #c4b5fd; background: rgba(167, 139, 250, 0.1); }
+    .cust-hint[hidden] { display: none; }
 
     /* ——— Рынок закрыт (выходные) ——— */
     .sig-panel.closed > .sig-tfs,
@@ -2733,6 +2735,7 @@
           <button id="cust-pick" class="dom-check" type="button"><svg viewBox="0 0 24 24"><path d="M4 4l7 17 2.5-7.5L21 11z"/></svg><span data-i18n="cust_pick">Выбрать элемент на странице</span></button>
           <div id="cust-editor" class="cust-editor" hidden>
             <div class="cust-target"><code id="cust-tag">span</code><span id="cust-current"></span></div>
+            <p id="cust-visual-note" class="cust-hint" hidden data-i18n="cust_visual_note">Это блок баланса: надпись поменяется только на экране, робот по-прежнему видит исходный текст.</p>
             <label id="cust-text-wrap" class="cust-field"><span data-i18n="cust_text">Текст</span><textarea id="cust-text" rows="2" maxlength="500"></textarea></label>
             <div class="cust-colors">
               <div class="cust-color"><span data-i18n="cust_color">Цвет текста / иконки</span><span class="cust-swatch" id="cust-color-wrap"><input id="cust-color" type="color"><button type="button" data-clear="cust-color" data-i18n-title="cust_clear" title="Убрать">×</button></span></div>
@@ -3146,7 +3149,7 @@
         cust_note: "Изменения хранятся только на этом компьютере и применяются только для аккаунта 9488323. Баланс, денежные суммы, поля ставки, кнопки сделок, пары и историю сделок менять нельзя — по ним работает робот.",
         cust_err_protected_money: "Это денежная сумма — её менять нельзя: робот считает по ней прибыль, Stop Loss и Take Profit.",
         cust_err_protected_robot: "Этот элемент использует робот (баланс, кнопки сделок, пары или история) — его менять нельзя.",
-        cust_err_protected_input: "Поля ввода менять нельзя.", cust_err_protected_own: "Это элемент самого Q-bot.",
+        cust_err_protected_input: "Поля ввода менять нельзя.", cust_err_protected_block: "Это весь блок целиком — выберите внутри него конкретную надпись или иконку.", cust_err_leaf: "В блоке баланса выберите саму надпись, без вложенных элементов.", cust_visual_note: "Это блок баланса: надпись поменяется только на экране, робот по-прежнему видит исходный текст.", cust_err_protected_own: "Это элемент самого Q-bot.",
         cust_err_selector: "Не удалось запомнить этот элемент. Выберите соседний или родительский.",
         cust_err_svg: "Это не похоже на SVG-код. Он должен начинаться с <svg.", cust_err_svg_big: "Файл слишком большой (до 40 КБ).",
         cust_err_missing: "Элемент сейчас не найден на странице — откройте нужный раздел.",
@@ -3255,7 +3258,7 @@
         cust_note: "Changes are stored only on this computer and apply only to account 9488323. Balance, money amounts, stake fields, trade buttons, pairs and trade history cannot be changed — the robot relies on them.",
         cust_err_protected_money: "This is a money amount and cannot be changed: the robot uses it for profit, Stop Loss and Take Profit.",
         cust_err_protected_robot: "The robot uses this element (balance, trade buttons, pairs or history), so it cannot be changed.",
-        cust_err_protected_input: "Input fields cannot be changed.", cust_err_protected_own: "This element belongs to Q-bot itself.",
+        cust_err_protected_input: "Input fields cannot be changed.", cust_err_protected_block: "This is the whole block — pick a specific label or icon inside it.", cust_err_leaf: "In the balance block, pick the label itself, without nested elements.", cust_visual_note: "This is the balance block: the label changes only on screen, the robot still sees the original text.", cust_err_protected_own: "This element belongs to Q-bot itself.",
         cust_err_selector: "Could not remember this element. Pick a neighbouring or parent one.",
         cust_err_svg: "This does not look like SVG code. It must start with <svg.", cust_err_svg_big: "The file is too big (40 KB max).",
         cust_err_missing: "The element is not on the page right now — open the right section.",
@@ -3364,7 +3367,7 @@
         cust_note: "As alterações ficam só neste computador e valem só para a conta 9488323. Saldo, valores em dinheiro, campos de entrada, botões de operação, pares e histórico não podem ser alterados — o robô depende deles.",
         cust_err_protected_money: "Isto é um valor em dinheiro e não pode ser alterado: o robô o usa para lucro, Stop Loss e Take Profit.",
         cust_err_protected_robot: "O robô usa este elemento (saldo, botões, pares ou histórico), então ele não pode ser alterado.",
-        cust_err_protected_input: "Campos de entrada não podem ser alterados.", cust_err_protected_own: "Este elemento é do próprio Q-bot.",
+        cust_err_protected_input: "Campos de entrada não podem ser alterados.", cust_err_protected_block: "Este é o bloco inteiro — escolha um texto ou ícone específico dentro dele.", cust_err_leaf: "No bloco do saldo, escolha o próprio texto, sem elementos internos.", cust_visual_note: "Este é o bloco do saldo: o texto muda só na tela, o robô continua vendo o original.", cust_err_protected_own: "Este elemento é do próprio Q-bot.",
         cust_err_selector: "Não foi possível memorizar este elemento. Escolha um vizinho ou o elemento pai.",
         cust_err_svg: "Isto não parece código SVG. Deve começar com <svg.", cust_err_svg_big: "O arquivo é grande demais (até 40 KB).",
         cust_err_missing: "O elemento não está na página agora — abra a seção certa.",
@@ -3637,6 +3640,7 @@
       $("cust-editor").hidden = false;
       $("cust-tag").textContent = "<" + p.tag + ">";
       $("cust-current").textContent = p.text || (p.hasSvg ? t("cust_icon") : "");
+      $("cust-visual-note").hidden = !p.visual;
       $("cust-text-wrap").hidden = !p.hasText && typeof rule.text !== "string";
       $("cust-text").value = typeof rule.text === "string" ? rule.text : p.text || "";
       $("cust-text").dataset.dirty = "";
