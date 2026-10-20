@@ -45,6 +45,7 @@ const CONTENT_SCRIPTS = [
   "css/jquery-ui.js",
   "main/dom-resolver.js",
   "main/dom-healer.js",
+  "main/page-custom.js",
   "main/content.js",
   "main/loadpage.js",
   "main/deal.js",
@@ -170,6 +171,9 @@ function buildChromeShim(cssText) {
             }
             return Object.assign(readRiskLimits(), { stop });
           }
+        },
+        custom(action, payload) {
+          return globalThis.QbotCustom ? globalThis.QbotCustom.api(action, payload) : { ok: false, error: "not-ready" };
         },
         dom(action, key, label, hint) {
           const heal = globalThis.QbotHeal;
@@ -1086,6 +1090,20 @@ app.whenReady().then(() => {
     return runInBot(
       contents,
       "globalThis.__QBOT_SIDEBAR_API__ ? globalThis.__QBOT_SIDEBAR_API__.dom(" + args.join(",") + ") : { ok: false }"
+    );
+  });
+
+  ipcMain.handle("qbot-custom", (event, request) => {
+    const input = request && typeof request === "object" ? request : {};
+    const allowed = ["state", "pick", "cancel", "preview", "save", "edit", "show", "remove", "toggle", "reset"];
+    if (!allowed.includes(input.action)) return { ok: false };
+    const payload = JSON.stringify(input.payload === undefined ? null : input.payload);
+    if (payload.length > 60000) return { ok: false, error: "too-big" };
+    const contents = siteContentsFrom(event.sender);
+    if (input.action === "pick" && contents && !contents.isDestroyed()) contents.focus();
+    return runInBot(
+      contents,
+      "globalThis.__QBOT_SIDEBAR_API__ ? globalThis.__QBOT_SIDEBAR_API__.custom(" + JSON.stringify(input.action) + "," + payload + ") : { ok: false }"
     );
   });
 

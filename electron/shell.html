@@ -1812,6 +1812,67 @@
       50% { box-shadow: 0 8px 22px rgba(59, 130, 246, 0.45), 0 0 0 7px rgba(34, 211, 238, 0); }
     }
 
+    /* ——— Редактор страницы (по ID аккаунта) ——— */
+    .cust[hidden] { display: none; }
+    .cust .card-title .cust-id { margin-left: auto; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; letter-spacing: 0.04em; color: #ddd6fe; background: rgba(167, 139, 250, 0.16); border: 1px solid rgba(167, 139, 250, 0.35); }
+    .cust .check { margin-bottom: 10px; }
+    .cust-editor {
+      display: grid;
+      gap: 10px;
+      margin-top: 10px;
+      padding: 12px;
+      border-radius: 14px;
+      background: linear-gradient(180deg, rgba(167, 139, 250, 0.1), rgba(0, 0, 0, 0.15));
+      border: 1px solid rgba(167, 139, 250, 0.35);
+      animation: rise 0.3s ease both;
+    }
+    .cust-editor[hidden] { display: none; }
+    .cust-target { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 12px; color: var(--muted); }
+    .cust-target code { padding: 2px 7px; border-radius: 6px; font: 600 11px/1.5 ui-monospace, Consolas, monospace; color: #ddd6fe; background: rgba(167, 139, 250, 0.18); }
+    .cust-target span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cust-field { display: grid; gap: 5px; font-size: 11.5px; color: var(--muted); }
+    .cust-field[hidden] { display: none; }
+    .cust-field textarea {
+      width: 100%;
+      resize: vertical;
+      padding: 8px 10px;
+      border-radius: 10px;
+      font: 12.5px/1.45 inherit;
+      font-family: inherit;
+      color: var(--text);
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--line);
+      outline: none;
+    }
+    .cust-field textarea:focus { border-color: rgba(167, 139, 250, 0.6); box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.15); }
+    #cust-svg { font-family: ui-monospace, Consolas, monospace; font-size: 11px; }
+    .cust-colors { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .cust-color { display: grid; gap: 5px; font-size: 11.5px; color: var(--muted); }
+    .cust-swatch { display: flex; align-items: center; gap: 6px; padding: 4px; border-radius: 10px; background: rgba(0, 0, 0, 0.3); border: 1px solid var(--line); }
+    .cust-swatch input { width: 100%; height: 26px; padding: 0; border: 0; border-radius: 7px; background: none; cursor: pointer; }
+    .cust-swatch input::-webkit-color-swatch-wrapper { padding: 0; }
+    .cust-swatch input::-webkit-color-swatch { border: 0; border-radius: 6px; }
+    .cust-swatch:not(.set) input { opacity: 0.35; }
+    .cust-swatch button { width: 26px; height: 26px; flex: 0 0 auto; padding: 0; border-radius: 7px; font-size: 15px; color: var(--muted); background: rgba(255, 255, 255, 0.06); }
+    .cust-svg-row { display: flex; align-items: center; gap: 8px; }
+    .cust-svg-row button { height: 30px; padding: 0 10px; border-radius: 9px; font-size: 12px; color: var(--text); background: rgba(255, 255, 255, 0.06); border: 1px solid var(--line); }
+    .cust-svg-preview { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 8px; background: rgba(255, 255, 255, 0.92); }
+    .cust-svg-preview[hidden] { display: none; }
+    .cust-svg-preview img { max-width: 22px; max-height: 22px; }
+    .cust-actions { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+    .cust-actions button { height: 36px; border-radius: 11px; }
+    .cust-actions .primary { color: #fff; background: linear-gradient(135deg, #8b5cf6, #6366f1); box-shadow: 0 8px 20px rgba(139, 92, 246, 0.35); }
+    .cust-actions .ghost { padding: 0 14px; color: var(--muted); background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line); }
+    .cust-msg { margin: 10px 0 0; padding: 8px 10px; border-radius: 10px; font-size: 12px; line-height: 1.45; animation: rise 0.25s ease both; }
+    .cust-msg[hidden] { display: none; }
+    .cust-msg.ok { color: #a7f3d0; background: rgba(52, 211, 153, 0.1); border: 1px solid rgba(52, 211, 153, 0.3); }
+    .cust-msg.err { color: #fecdd3; background: rgba(251, 113, 133, 0.1); border: 1px solid rgba(251, 113, 133, 0.3); }
+    .cust-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+    .cust-chips i { display: inline-flex; align-items: center; gap: 4px; padding: 1px 6px; border-radius: 6px; font-size: 10px; font-style: normal; color: #c4b5fd; background: rgba(167, 139, 250, 0.14); }
+    .cust-chips i b { width: 9px; height: 9px; border-radius: 3px; }
+    .cust-reset { width: 100%; height: 32px; margin-top: 8px; font-size: 12px; color: #fda4af; background: transparent; border: 1px dashed rgba(251, 113, 133, 0.4); }
+    .cust-reset[hidden] { display: none; }
+
     /* ——— Рынок закрыт (выходные) ——— */
     .sig-panel.closed > .sig-tfs,
     .sig-panel.closed > .sig-label,
@@ -2666,6 +2727,29 @@
           <div id="dom-list" class="dom-list"></div>
           <p class="settings-note" data-i18n="dom_note">Если бот не находит кнопку или поле, нажмите «Указать» и кликните по нему на странице слева — бот запомнит элемент.</p>
         </section>
+        <section id="cust-card" class="card cust" hidden>
+          <p class="card-title"><svg class="icon" viewBox="0 0 24 24"><path d="M14.5 4.5l5 5L9 20H4v-5z"/><path d="M12.5 6.5l5 5"/></svg><span data-i18n="cust_title">Редактор страницы</span><span class="cust-id">ID 9488323</span></p>
+          <label class="check"><span class="meta"><b data-i18n="cust_enabled">Применять изменения</b><small data-i18n="cust_enabled_d">Выключите, чтобы увидеть исходную страницу</small></span><input id="cust-enabled" type="checkbox" checked></label>
+          <button id="cust-pick" class="dom-check" type="button"><svg viewBox="0 0 24 24"><path d="M4 4l7 17 2.5-7.5L21 11z"/></svg><span data-i18n="cust_pick">Выбрать элемент на странице</span></button>
+          <div id="cust-editor" class="cust-editor" hidden>
+            <div class="cust-target"><code id="cust-tag">span</code><span id="cust-current"></span></div>
+            <label id="cust-text-wrap" class="cust-field"><span data-i18n="cust_text">Текст</span><textarea id="cust-text" rows="2" maxlength="500"></textarea></label>
+            <div class="cust-colors">
+              <div class="cust-color"><span data-i18n="cust_color">Цвет текста / иконки</span><span class="cust-swatch" id="cust-color-wrap"><input id="cust-color" type="color"><button type="button" data-clear="cust-color" data-i18n-title="cust_clear" title="Убрать">×</button></span></div>
+              <div class="cust-color"><span data-i18n="cust_bg">Цвет фона</span><span class="cust-swatch" id="cust-bg-wrap"><input id="cust-bg" type="color"><button type="button" data-clear="cust-bg" data-i18n-title="cust_clear" title="Убрать">×</button></span></div>
+            </div>
+            <div id="cust-svg-wrap" class="cust-field">
+              <span data-i18n="cust_svg">SVG-иконка</span>
+              <textarea id="cust-svg" rows="3" spellcheck="false" placeholder="&lt;svg viewBox=&quot;0 0 24 24&quot;&gt;…&lt;/svg&gt;"></textarea>
+              <div class="cust-svg-row"><button id="cust-svg-file" type="button" data-i18n="cust_svg_file">Загрузить .svg</button><input id="cust-svg-input" type="file" accept=".svg,image/svg+xml" hidden><span id="cust-svg-preview" class="cust-svg-preview" hidden><img alt=""></span></div>
+            </div>
+            <div class="cust-actions"><button id="cust-save" class="primary" type="button" data-i18n="cust_save">Сохранить</button><button id="cust-cancel" class="ghost" type="button" data-i18n="cust_cancel">Отмена</button></div>
+          </div>
+          <p id="cust-msg" class="cust-msg" hidden></p>
+          <div id="cust-list" class="dom-list"></div>
+          <button id="cust-reset" class="cust-reset" type="button" hidden data-i18n="cust_reset">Сбросить все изменения</button>
+          <p class="settings-note" data-i18n="cust_note">Изменения хранятся только на этом компьютере и применяются только для аккаунта 9488323. Баланс, денежные суммы, поля ставки, кнопки сделок, пары и историю сделок менять нельзя — по ним работает робот.</p>
+        </section>
       </div>
     </div>
 
@@ -3052,6 +3136,20 @@
         splash_connect: "Подключение к платформе…", splash_page: "Загрузка торгового терминала…",
         splash_robot: "Запуск робота…", splash_ready: "Всё готово", splash_error: "Не удалось загрузить страницу",
         splash_retry: "Повторить", step_platform: "Платформа", step_page: "Терминал", step_robot: "Робот",
+        cust_title: "Редактор страницы", cust_enabled: "Применять изменения", cust_enabled_d: "Выключите, чтобы увидеть исходную страницу",
+        cust_pick: "Выбрать элемент на странице", cust_picking: "Кликните по элементу на странице слева. Esc — отмена.",
+        cust_text: "Текст", cust_color: "Цвет текста / иконки", cust_bg: "Цвет фона", cust_color_short: "Цвет", cust_bg_short: "Фон",
+        cust_svg: "SVG-иконка", cust_svg_file: "Загрузить .svg", cust_icon: "Иконка", cust_clear: "Убрать",
+        cust_save: "Сохранить", cust_cancel: "Отмена", cust_edit: "Изменить", cust_remove: "Удалить",
+        cust_reset: "Сбросить все изменения", cust_reset_confirm: "Вернуть страницу к исходному виду?", cust_reset_done: "Все изменения сброшены.",
+        cust_saved: "Сохранено — изменение применится и после перезапуска.",
+        cust_note: "Изменения хранятся только на этом компьютере и применяются только для аккаунта 9488323. Баланс, денежные суммы, поля ставки, кнопки сделок, пары и историю сделок менять нельзя — по ним работает робот.",
+        cust_err_protected_money: "Это денежная сумма — её менять нельзя: робот считает по ней прибыль, Stop Loss и Take Profit.",
+        cust_err_protected_robot: "Этот элемент использует робот (баланс, кнопки сделок, пары или история) — его менять нельзя.",
+        cust_err_protected_input: "Поля ввода менять нельзя.", cust_err_protected_own: "Это элемент самого Q-bot.",
+        cust_err_selector: "Не удалось запомнить этот элемент. Выберите соседний или родительский.",
+        cust_err_svg: "Это не похоже на SVG-код. Он должен начинаться с <svg.", cust_err_svg_big: "Файл слишком большой (до 40 КБ).",
+        cust_err_missing: "Элемент сейчас не найден на странице — откройте нужный раздел.",
         dom_title: "Элементы страницы", dom_check: "Проверить элементы",
         dom_note: "Если бот не находит кнопку или поле, нажмите «Указать» и кликните по нему на странице слева — бот запомнит элемент.",
         dom_el_balance: "Баланс", dom_el_userMenu: "Меню аккаунта", dom_el_assetAdd: "Кнопка «+» добавления пары",
@@ -3147,6 +3245,20 @@
         splash_connect: "Connecting to the platform…", splash_page: "Loading trading terminal…",
         splash_robot: "Starting the robot…", splash_ready: "All set", splash_error: "Failed to load the page",
         splash_retry: "Retry", step_platform: "Platform", step_page: "Terminal", step_robot: "Robot",
+        cust_title: "Page editor", cust_enabled: "Apply changes", cust_enabled_d: "Turn off to see the original page",
+        cust_pick: "Pick an element on the page", cust_picking: "Click an element on the page on the left. Esc to cancel.",
+        cust_text: "Text", cust_color: "Text / icon color", cust_bg: "Background", cust_color_short: "Color", cust_bg_short: "Background",
+        cust_svg: "SVG icon", cust_svg_file: "Upload .svg", cust_icon: "Icon", cust_clear: "Remove",
+        cust_save: "Save", cust_cancel: "Cancel", cust_edit: "Edit", cust_remove: "Delete",
+        cust_reset: "Reset all changes", cust_reset_confirm: "Restore the page to its original look?", cust_reset_done: "All changes were reset.",
+        cust_saved: "Saved — the change stays after a restart too.",
+        cust_note: "Changes are stored only on this computer and apply only to account 9488323. Balance, money amounts, stake fields, trade buttons, pairs and trade history cannot be changed — the robot relies on them.",
+        cust_err_protected_money: "This is a money amount and cannot be changed: the robot uses it for profit, Stop Loss and Take Profit.",
+        cust_err_protected_robot: "The robot uses this element (balance, trade buttons, pairs or history), so it cannot be changed.",
+        cust_err_protected_input: "Input fields cannot be changed.", cust_err_protected_own: "This element belongs to Q-bot itself.",
+        cust_err_selector: "Could not remember this element. Pick a neighbouring or parent one.",
+        cust_err_svg: "This does not look like SVG code. It must start with <svg.", cust_err_svg_big: "The file is too big (40 KB max).",
+        cust_err_missing: "The element is not on the page right now — open the right section.",
         dom_title: "Page elements", dom_check: "Check elements",
         dom_note: "If the robot can't find a button or field, press “Select” and click it on the page on the left — the robot will remember it.",
         dom_el_balance: "Balance", dom_el_userMenu: "Account menu", dom_el_assetAdd: "“+” add pair button",
@@ -3242,6 +3354,20 @@
         splash_connect: "Conectando à plataforma…", splash_page: "Carregando o terminal de trading…",
         splash_robot: "Iniciando o robô…", splash_ready: "Tudo pronto", splash_error: "Não foi possível carregar a página",
         splash_retry: "Tentar novamente", step_platform: "Plataforma", step_page: "Terminal", step_robot: "Robô",
+        cust_title: "Editor da página", cust_enabled: "Aplicar alterações", cust_enabled_d: "Desligue para ver a página original",
+        cust_pick: "Escolher um elemento na página", cust_picking: "Clique em um elemento da página à esquerda. Esc cancela.",
+        cust_text: "Texto", cust_color: "Cor do texto / ícone", cust_bg: "Cor de fundo", cust_color_short: "Cor", cust_bg_short: "Fundo",
+        cust_svg: "Ícone SVG", cust_svg_file: "Enviar .svg", cust_icon: "Ícone", cust_clear: "Remover",
+        cust_save: "Salvar", cust_cancel: "Cancelar", cust_edit: "Editar", cust_remove: "Excluir",
+        cust_reset: "Redefinir todas as alterações", cust_reset_confirm: "Voltar a página ao visual original?", cust_reset_done: "Todas as alterações foram redefinidas.",
+        cust_saved: "Salvo — a alteração continua após reiniciar.",
+        cust_note: "As alterações ficam só neste computador e valem só para a conta 9488323. Saldo, valores em dinheiro, campos de entrada, botões de operação, pares e histórico não podem ser alterados — o robô depende deles.",
+        cust_err_protected_money: "Isto é um valor em dinheiro e não pode ser alterado: o robô o usa para lucro, Stop Loss e Take Profit.",
+        cust_err_protected_robot: "O robô usa este elemento (saldo, botões, pares ou histórico), então ele não pode ser alterado.",
+        cust_err_protected_input: "Campos de entrada não podem ser alterados.", cust_err_protected_own: "Este elemento é do próprio Q-bot.",
+        cust_err_selector: "Não foi possível memorizar este elemento. Escolha um vizinho ou o elemento pai.",
+        cust_err_svg: "Isto não parece código SVG. Deve começar com <svg.", cust_err_svg_big: "O arquivo é grande demais (até 40 KB).",
+        cust_err_missing: "O elemento não está na página agora — abra a seção certa.",
         dom_title: "Elementos da página", dom_check: "Verificar elementos",
         dom_note: "Se o robô não encontrar um botão ou campo, clique em “Indicar” e depois nele na página à esquerda — o robô vai lembrar.",
         dom_el_balance: "Saldo", dom_el_userMenu: "Menu da conta", dom_el_assetAdd: "Botão “+” de adicionar par",
@@ -3444,6 +3570,229 @@
         list.appendChild(row);
       });
     }
+
+    // ——— Редактор страницы для отдельного аккаунта ———
+    const CUST_ACCOUNT = "9488323";
+    const cust = { visible: false, picked: null, pollTimer: null, previewTimer: null };
+
+    function custCall(action, payload) {
+      return window.qbot.custom ? window.qbot.custom(action, payload) : Promise.resolve(null);
+    }
+
+    function custMessage(text, ok) {
+      const box = $("cust-msg");
+      box.hidden = !text;
+      box.textContent = text || "";
+      box.className = "cust-msg " + (ok ? "ok" : "err");
+    }
+
+    function renderCustomCard(account) {
+      const show = !!account && String(account.id || "") === CUST_ACCOUNT;
+      if (show === cust.visible) return;
+      cust.visible = show;
+      $("cust-card").hidden = !show;
+      if (show) loadCustom();
+    }
+
+    function custSwatch(id, value, set) {
+      $(id).value = value || "#ffffff";
+      $(id + "-wrap").classList.toggle("set", !!set);
+    }
+
+    function custPayload() {
+      const p = cust.picked;
+      if (!p) return null;
+      const svg = $("cust-svg").value.trim();
+      return {
+        selector: p.selector,
+        label: (p.text || (p.hasSvg ? "" : p.tag) || "").slice(0, 60),
+        text: $("cust-text").dataset.dirty === "1" || (p.rule && typeof p.rule.text === "string") ? $("cust-text").value : null,
+        color: $("cust-color-wrap").classList.contains("set") ? $("cust-color").value : null,
+        bg: $("cust-bg-wrap").classList.contains("set") ? $("cust-bg").value : null,
+        svg: p.hasSvg && svg ? svg : null,
+      };
+    }
+
+    function custSvgPreview() {
+      const code = $("cust-svg").value.trim().replace(/<svg\b(?![^>]*\sxmlns=)/i, '<svg xmlns="http://www.w3.org/2000/svg"');
+      const box = $("cust-svg-preview");
+      box.hidden = !/<svg[\s>]/i.test(code);
+      if (!box.hidden) box.querySelector("img").src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(code);
+    }
+
+    function custSchedulePreview() {
+      clearTimeout(cust.previewTimer);
+      cust.previewTimer = setTimeout(async () => {
+        const payload = custPayload();
+        if (!payload) return;
+        const res = await custCall("preview", payload);
+        if (res && !res.ok) custMessage(t("cust_err_" + res.error) !== "cust_err_" + res.error ? t("cust_err_" + res.error) : t("cust_err_missing"), false);
+        else custMessage("", true);
+      }, 220);
+    }
+
+    function openCustEditor(p) {
+      cust.picked = p;
+      const rule = p.rule || {};
+      $("cust-editor").hidden = false;
+      $("cust-tag").textContent = "<" + p.tag + ">";
+      $("cust-current").textContent = p.text || (p.hasSvg ? t("cust_icon") : "");
+      $("cust-text-wrap").hidden = !p.hasText && typeof rule.text !== "string";
+      $("cust-text").value = typeof rule.text === "string" ? rule.text : p.text || "";
+      $("cust-text").dataset.dirty = "";
+      custSwatch("cust-color", rule.color || p.color, !!rule.color);
+      custSwatch("cust-bg", rule.bg || p.bg, !!rule.bg);
+      $("cust-svg-wrap").hidden = !p.hasSvg;
+      $("cust-svg").value = rule.svg || "";
+      custSvgPreview();
+      custMessage("", true);
+      $("cust-editor").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
+    function closeCustEditor() {
+      cust.picked = null;
+      $("cust-editor").hidden = true;
+    }
+
+    function renderCustList(list) {
+      const box = $("cust-list");
+      box.replaceChildren();
+      (list || []).forEach((rule) => {
+        const row = document.createElement("div");
+        row.className = "dom-row";
+        row.dataset.state = rule.found ? "ok" : "missing";
+        const dot = document.createElement("i");
+        dot.className = "dot";
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        const title = document.createElement("b");
+        title.textContent = rule.label || t("cust_icon");
+        const chips = document.createElement("div");
+        chips.className = "cust-chips";
+        const chip = (label, color) => {
+          const el = document.createElement("i");
+          if (color) {
+            const sw = document.createElement("b");
+            sw.style.background = color;
+            el.appendChild(sw);
+          }
+          el.append(label);
+          chips.appendChild(el);
+        };
+        if (rule.text) chip(t("cust_text"));
+        if (rule.color) chip(t("cust_color_short"), rule.color);
+        if (rule.bg) chip(t("cust_bg_short"), rule.bg);
+        if (rule.svg) chip(t("cust_icon"));
+        meta.append(title, chips);
+        const acts = document.createElement("div");
+        acts.className = "acts";
+        [["show", "dom_show"], ["edit", "cust_edit"], ["remove", "cust_remove"]].forEach(([action, key]) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.textContent = t(key);
+          button.addEventListener("click", async () => {
+            const res = await custCall(action, rule.index);
+            if (action === "edit" && res && res.ok) {
+              const state = await custCall("state");
+              if (state && state.picked && state.picked.ok) openCustEditor(state.picked);
+            } else if (res && !res.ok) {
+              custMessage(t("cust_err_missing"), false);
+            }
+            if (action === "remove") loadCustom();
+          });
+          acts.appendChild(button);
+        });
+        row.append(dot, meta, acts);
+        box.appendChild(row);
+      });
+      $("cust-reset").hidden = !(list && list.length);
+    }
+
+    async function loadCustom() {
+      if (!cust.visible) return;
+      const state = await custCall("state");
+      if (!state || !state.ok) return;
+      $("cust-enabled").checked = !!state.enabled;
+      renderCustList(state.rules);
+    }
+
+    $("cust-pick").addEventListener("click", async () => {
+      closeCustEditor();
+      custMessage(t("cust_picking"), true);
+      const res = await custCall("pick");
+      if (!res || !res.ok) return custMessage(t("cust_err_missing"), false);
+      $("cust-pick").classList.add("busy");
+      clearInterval(cust.pollTimer);
+      cust.pollTimer = setInterval(async () => {
+        const state = await custCall("state");
+        if (!state || state.picking) return;
+        clearInterval(cust.pollTimer);
+        $("cust-pick").classList.remove("busy");
+        const p = state.picked;
+        if (p && p.ok) openCustEditor(p);
+        else if (p && p.error === "protected") custMessage(t("cust_err_protected_" + p.reason), false);
+        else if (p && p.error === "selector") custMessage(t("cust_err_selector"), false);
+        else custMessage("", true);
+      }, 400);
+    });
+    $("cust-text").addEventListener("input", () => {
+      $("cust-text").dataset.dirty = "1";
+      custSchedulePreview();
+    });
+    ["cust-color", "cust-bg"].forEach((id) => {
+      $(id).addEventListener("input", () => {
+        $(id + "-wrap").classList.add("set");
+        custSchedulePreview();
+      });
+    });
+    document.querySelectorAll("[data-clear]").forEach((button) => {
+      button.addEventListener("click", () => {
+        $(button.dataset.clear + "-wrap").classList.remove("set");
+        custSchedulePreview();
+      });
+    });
+    $("cust-svg").addEventListener("input", () => {
+      custSvgPreview();
+      custSchedulePreview();
+    });
+    $("cust-svg-file").addEventListener("click", () => $("cust-svg-input").click());
+    $("cust-svg-input").addEventListener("change", async () => {
+      const file = $("cust-svg-input").files[0];
+      $("cust-svg-input").value = "";
+      if (!file) return;
+      if (file.size > 40000) return custMessage(t("cust_err_svg_big"), false);
+      $("cust-svg").value = (await file.text()).trim();
+      custSvgPreview();
+      custSchedulePreview();
+    });
+    $("cust-save").addEventListener("click", async () => {
+      const payload = custPayload();
+      if (!payload) return;
+      const res = await custCall("save", payload);
+      if (!res || !res.ok) {
+        const key = "cust_err_" + (res && res.error);
+        return custMessage(t(key) !== key ? t(key) : t("cust_err_missing"), false);
+      }
+      closeCustEditor();
+      custMessage(t("cust_saved"), true);
+      loadCustom();
+    });
+    $("cust-cancel").addEventListener("click", async () => {
+      await custCall("cancel");
+      closeCustEditor();
+      custMessage("", true);
+    });
+    $("cust-enabled").addEventListener("change", async () => {
+      await custCall("toggle", $("cust-enabled").checked);
+      loadCustom();
+    });
+    $("cust-reset").addEventListener("click", async () => {
+      if (!confirm(t("cust_reset_confirm"))) return;
+      await custCall("reset");
+      closeCustEditor();
+      custMessage(t("cust_reset_done"), true);
+      loadCustom();
+    });
 
     async function loadDomReport() {
       const button = $("dom-check");
@@ -4834,6 +5183,7 @@
         if (data.ready) renderGate(data.account);
         renderDomAlert(data.dom);
         renderRisk(data.risk, !!data.running);
+        renderCustomCard(data.account);
         if (data.ready && !settingsLoaded) {
           const settings = await window.qbot.settings();
           fill(settings);

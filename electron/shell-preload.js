@@ -61,6 +61,9 @@ contextBridge.exposeInMainWorld("qbot", {
   onFocusAddress(callback) {
     ipcRenderer.on("qbot-focus-address", () => callback());
   },
+  custom(action, payload) {
+    return ipcRenderer.invoke("qbot-custom", { action, payload });
+  },
   dom(action, key, label, hint) {
     return ipcRenderer.invoke("qbot-dom", { action, key, label, hint });
   },
