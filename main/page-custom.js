@@ -23,6 +23,7 @@
   let applyQueued = false;
   const observedRoots = new WeakSet();
   const styledRoots = new Set();
+  const spriteUses = new Set();
 
   function accountId() {
     const id = global.__QBOT_ACCOUNT__ && global.__QBOT_ACCOUNT__.id;
@@ -180,8 +181,24 @@
   // ——— Применение: только CSS ———
 
   // Without xmlns the parser puts the shapes in no namespace and the browser does not draw them.
+  // xlink:href without an xmlns:xlink declaration is an XML error, so it is added too.
   function withSvgNamespace(markup) {
-    return markup.replace(/<svg\b(?![^>]*\sxmlns=)/i, '<svg xmlns="http://www.w3.org/2000/svg"');
+    let out = markup.replace(/<svg\b(?![^>]*\sxmlns=)/i, '<svg xmlns="http://www.w3.org/2000/svg"');
+    if (/xlink:/i.test(out) && !/xmlns:xlink=/i.test(out)) out = out.replace(/<svg\b/i, '<svg xmlns:xlink="http://www.w3.org/1999/xlink"');
+    return out;
+  }
+
+  // <use xlink:href="/profile/images/spritemap.svg#icon"> — an icon from the site's own sprite.
+  // Only the same site is allowed; returns the href or null.
+  function spriteHref(markup) {
+    const m = String(markup || "").match(/<use\b[^>]*?\s(?:xlink:)?href\s*=\s*["']([^"'#][^"']*#[\w-]+)["']/i);
+    if (!m) return null;
+    try {
+      const url = new URL(m[1], location.href);
+      return /^https?:$/.test(url.protocol) && url.origin === location.origin ? m[1] : "";
+    } catch (e) {
+      return "";
+    }
   }
 
   function sanitizeSvg(markup) {
@@ -224,6 +241,8 @@
       out.push(`${sel}::after { content: ${cssString(rule.text)}; font-size: ${size}px !important; white-space: pre-wrap; }`);
     }
     // The icon is drawn as a background over the original shapes, which are hidden.
+    // A sprite icon is our own <use> inside the svg; the original shapes are only hidden.
+    if (rule.sprite) out.push(`${sel} > :not([data-qbot-icon]) { visibility: hidden !important; }`);
     if (rule.svg) {
       const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(withSvgNamespace(rule.svg));
       out.push(`${sel} > * { visibility: hidden !important; }`);
@@ -252,15 +271,41 @@
     return preview ? list.concat(preview) : list;
   }
 
+  function setSpriteIcon(svg, href) {
+    let use = Array.from(svg.children).find((c) => c.hasAttribute("data-qbot-icon"));
+    if (!use) {
+      use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+      use.setAttribute("data-qbot-icon", "");
+      use.setAttribute("x", "0");
+      use.setAttribute("y", "0");
+      use.setAttribute("width", "100%");
+      use.setAttribute("height", "100%");
+      svg.appendChild(use);
+      spriteUses.add(use);
+    }
+    if (use.getAttribute("href") !== href) {
+      use.setAttribute("href", href);
+      use.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", href);
+    }
+    return use;
+  }
+
   function applyAll() {
     applyQueued = false;
     const cssByRoot = new Map();
+    const keepUses = new Set();
     for (const rule of activeRules()) {
       const found = resolve(rule.selector);
       if (!found) continue;
       watchRoot(found.root);
       const css = cssFor(rule, found.local);
       if (css) cssByRoot.set(found.root, (cssByRoot.get(found.root) || "") + css + "\n");
+      if (rule.sprite && isSvg(found.el)) keepUses.add(setSpriteIcon(found.el, rule.sprite));
+    }
+    for (const use of Array.from(spriteUses)) {
+      if (keepUses.has(use)) continue;
+      use.remove();
+      spriteUses.delete(use);
     }
     for (const root of new Set([...styledRoots, ...cssByRoot.keys()])) {
       const css = cssByRoot.get(root) || "";
@@ -418,9 +463,11 @@
     const bg = /^#[0-9a-f]{6}$/i.test(src.bg || "") ? src.bg : null;
     const text = typeof src.text === "string" ? src.text.slice(0, MAX_TEXT) : null;
     if (text !== null && DIGITS.test(visibleText(el))) return { error: "digits" };
-    const svg = src.svg ? sanitizeSvg(src.svg) : null;
-    if (src.svg && !svg) return { error: "svg" };
-    if (svg && !isSvg(el)) return { error: "svg_target" };
+    const sprite = src.svg ? spriteHref(src.svg) : null;
+    if (sprite === "") return { error: "sprite_origin" };
+    const svg = src.svg && !sprite ? sanitizeSvg(src.svg) : null;
+    if (src.svg && !sprite && !svg) return { error: "svg" };
+    if ((svg || sprite) && !isSvg(el)) return { error: "svg_target" };
     // Measure the original size before our own font-size: 0 is in place.
     const old = (preview && preview.selector === selector ? preview : null) || rules.find((r) => r.selector === selector);
     let fontSize = old && old.fontSize;
@@ -438,6 +485,8 @@
         color,
         bg,
         svg,
+        sprite: sprite || null,
+        svgSource: sprite ? String(src.svg).trim().slice(0, 2000) : null,
         fontSize,
         lineHeight,
         at: Date.now(),
@@ -452,7 +501,7 @@
       text: typeof r.text === "string",
       color: r.color,
       bg: r.bg,
-      svg: !!r.svg,
+      svg: !!(r.svg || r.sprite),
       found: !!query(r.selector),
     }));
   }
@@ -482,7 +531,7 @@
     if (action === "save") {
       const result = cleanRule(payload);
       if (result.error) return { ok: false, error: result.error };
-      const empty = result.rule.text === null && !result.rule.color && !result.rule.bg && !result.rule.svg;
+      const empty = result.rule.text === null && !result.rule.color && !result.rule.bg && !result.rule.svg && !result.rule.sprite;
       rules = rules.filter((r) => r.selector !== result.rule.selector);
       if (!empty) rules.push(result.rule);
       preview = null;
