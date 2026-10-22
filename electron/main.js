@@ -1114,12 +1114,51 @@ app.whenReady().then(() => {
       return "";
     }
   });
-  ipcMain.handle("qbot-signals", async (_event, tf) => {
+  // ——— Пары, открытые на платформе брокера (вкладки над графиком) ———
+
+  const OPEN_PAIRS_JS = `(() => {
+    try {
+      const tabs = QbotDom.collectPairTabs ? QbotDom.collectPairTabs() : [];
+      return tabs.map((tab) => String(QbotDom.getPairTabName(tab) || "").trim()).filter(Boolean);
+    } catch (e) {
+      return [];
+    }
+  })()`;
+
+  function pairSymbol(name) {
+    return String(name || "").replace(/\(?\s*OTC\s*\)?/gi, "").replace(/[^A-Za-z]/g, "").toUpperCase();
+  }
+
+  // Finds the tab of a pair: the regular pair first, the OTC one if only it is open.
+  function pairTabJs(symbol) {
+    return `const symbol = ${JSON.stringify(symbol)};
+      const tabs = QbotDom.collectPairTabs ? QbotDom.collectPairTabs() : [];
+      const name = (tab) => String(QbotDom.getPairTabName(tab) || "");
+      const key = (tab) => name(tab).replace(/\\(?\\s*OTC\\s*\\)?/gi, "").replace(/[^A-Za-z]/g, "").toUpperCase();
+      const same = tabs.filter((tab) => key(tab) === symbol);
+      const tab = same.find((item) => !/otc/i.test(name(item))) || same[0] || null;`;
+  }
+
+  ipcMain.handle("qbot-signals", async (event, tf) => {
     const allowed = { 1: "1", 5: "5", 15: "15", 30: "30", 60: "60" };
     const frame = allowed[Number(tf)] || "1";
+    const names = await runInBot(siteContentsFrom(event.sender), OPEN_PAIRS_JS).catch(() => null);
+    if (!Array.isArray(names)) return { ok: false, error: "page" };
+    const pairs = [];
+    for (const name of names) {
+      const symbol = pairSymbol(name);
+      if (symbol.length < 3 || symbol.length > 12) continue;
+      const otc = /otc/i.test(name);
+      const known = pairs.find((p) => p.symbol === symbol);
+      // Regular and OTC tabs of one pair are one symbol for the server; show the regular one, as a click opens it.
+      if (!known) pairs.push({ symbol, name, otc });
+      else if (known.otc && !otc) Object.assign(known, { name, otc });
+    }
+    if (!pairs.length) return { ok: false, error: "no_pairs" };
     try {
       const response = await net.fetch(
-        "https://ai-tradebot.com/gptanalys/autosearch.php?tf=" + frame
+        "https://ai-tradebot.com/gptanalys/autosearch.php?tf=" + frame +
+          "&pairs=" + encodeURIComponent(pairs.map((p) => p.symbol).join(","))
       );
       if (!response.ok) return { ok: false, error: "http" };
       const data = await response.json();
@@ -1137,10 +1176,34 @@ app.whenReady().then(() => {
               strength: data.strength,
             }]
           : [];
-      return { ok: true, tf: data.tf, ranked };
+      const failed = Array.isArray(data.failed) ? data.failed.map(pairSymbol) : [];
+      return {
+        ok: true,
+        tf: data.tf,
+        pairs: pairs.map((p) => ({ ...p, failed: failed.includes(p.symbol) })),
+        ranked: ranked
+          .filter((item) => pairs.some((p) => p.symbol === pairSymbol(item.pair)))
+          .map((item) => ({ ...item, name: (pairs.find((p) => p.symbol === pairSymbol(item.pair)) || {}).name || "" })),
+      };
     } catch (e) {
       return { ok: false, error: "network" };
     }
+  });
+
+  ipcMain.handle("qbot-open-pair", (event, raw) => {
+    const symbol = pairSymbol(raw);
+    if (symbol.length < 3) return { ok: false };
+    const code = `(() => {
+      try {
+        ${pairTabJs(symbol)}
+        if (!tab) return { ok: false, found: false };
+        (QbotDom.getPairTabClickTarget(tab) || tab).click();
+        return { ok: true, found: true, name: name(tab) };
+      } catch (e) {
+        return { ok: false };
+      }
+    })()`;
+    return runInBot(siteContentsFrom(event.sender), code);
   });
 
   ipcMain.handle("qbot-open-signal", async (event, raw) => {
@@ -1149,10 +1212,8 @@ app.whenReady().then(() => {
     if (symbol.length < 6 || !way) return { ok: false };
     const code = `(() => {
       try {
-        const symbol = ${JSON.stringify(symbol)};
+        ${pairTabJs(symbol)}
         const way = ${JSON.stringify(way)};
-        const tabs = QbotDom.collectPairTabs ? QbotDom.collectPairTabs() : [];
-        const tab = tabs.find((item) => String(QbotDom.getPairTabName(item) || "").replace(/[^A-Za-z]/g, "").toUpperCase().includes(symbol));
         if (tab) (QbotDom.getPairTabClickTarget(tab) || tab).click();
         const button = QbotDom.findTradeDirectionButton(way);
         if (!button) return { ok: false, found: !!tab };

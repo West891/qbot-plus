@@ -34,6 +34,9 @@ contextBridge.exposeInMainWorld("qbot", {
   openSignal(payload) {
     return ipcRenderer.invoke("qbot-open-signal", payload);
   },
+  openPair(symbol) {
+    return ipcRenderer.invoke("qbot-open-pair", symbol);
+  },
   openExternal(url) {
     return ipcRenderer.invoke("qbot-open-external", url);
   },

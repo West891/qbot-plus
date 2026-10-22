@@ -1875,11 +1875,46 @@
     .cust-hint { margin: 0; padding: 7px 10px; border-radius: 9px; font-size: 11.5px; line-height: 1.45; color: #c4b5fd; background: rgba(167, 139, 250, 0.1); }
     .cust-hint[hidden] { display: none; }
 
+    /* Сигналы: открытые пары и переход к паре по клику */
+    .sig-pairs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+    .sig-pairs[hidden] { display: none; }
+    .sig-pairs > span { width: 100%; color: #8b97ad; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+    .sig-pair-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 28px;
+      padding: 0 10px 0 4px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #c5cedd;
+      background: #1a2333;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .sig-pair-chip .sig-flags { width: 34px; height: 22px; }
+    .sig-pair-chip .sig-flags .sig-flag { width: 22px; height: 22px; }
+    .sig-pair-chip .sig-flags .sig-flag + .sig-flag { left: 12px; }
+    .sig-pair-chip:hover { color: #fff; border-color: rgba(34, 211, 238, 0.45); transform: none; }
+    .sig-pair-chip.on { color: #04222a; background: #22d3ee; border-color: transparent; }
+    .sig-pair-chip.off { opacity: 0.45; text-decoration: line-through; }
+    .sig-hint { margin: 0; padding: 8px 10px; border-radius: 10px; font-size: 12px; color: #fde68a; background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.3); animation: rise 0.25s ease both; }
+    .sig-hint[hidden] { display: none; }
+    .sig-card[data-pair], .sig-row[data-pair] { cursor: pointer; transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease; }
+    .sig-card[data-pair]:hover, .sig-row[data-pair]:hover { border-color: rgba(34, 211, 238, 0.45); box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.15), 0 10px 26px rgba(0, 0, 0, 0.35); }
+    .sig-row[data-pair]:hover { transform: translateX(2px); }
+    .sig-goto { margin-left: auto; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 700; color: #67e8f9; background: rgba(34, 211, 238, 0.1); opacity: 0; transition: opacity 0.2s ease; white-space: nowrap; }
+    .sig-card[data-pair]:hover .sig-goto { opacity: 1; }
+    .sig-jump { animation: sig-jump 0.6s ease; }
+    @keyframes sig-jump { 0% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.6); } 100% { box-shadow: 0 0 0 14px rgba(34, 211, 238, 0); } }
+
     /* ——— Рынок закрыт (выходные) ——— */
     .sig-panel.closed > .sig-tfs,
     .sig-panel.closed > .sig-label,
     .sig-panel.closed > #sig-active,
     .sig-panel.closed > #sig-list,
+    .sig-panel.closed > #sig-pairs,
+    .sig-panel.closed > #sig-hint,
     .sig-panel.closed #sig-refresh { display: none; }
     .sig-panel.closed { background: radial-gradient(130% 70% at 50% -5%, #1c1747 0%, #0c1024 50%, #060812 100%); }
     .mk { position: relative; display: grid; gap: 14px; isolation: isolate; animation: rise 0.5s ease both; }
@@ -2940,6 +2975,8 @@
         <button type="button" data-tf="30M">30M</button>
         <button type="button" data-tf="1H">1H</button>
       </div>
+      <div id="sig-pairs" class="sig-pairs" hidden></div>
+      <p id="sig-hint" class="sig-hint" hidden></p>
       <p class="sig-label" data-i18n="sig_active">АКТИВНЫЙ</p>
       <div id="sig-active"></div>
       <p class="sig-label" data-i18n="sig_recent">ПОСЛЕДНИЕ 10 СИГНАЛОВ</p>
@@ -3110,7 +3147,7 @@
         mk_sydney: "Сидней", mk_tokyo: "Токио", mk_london: "Лондон", mk_newyork: "Нью-Йорк",
         mk_in: "через {t}", mk_d: "д", mk_h: "ч", mk_m: "мин",
         mk_note: "Панель можно не закрывать — сигналы включатся сами в момент открытия рынка.",
-        sig_open: "Открыть", sig_strength: "Сила", sig_empty: "Сигналов сейчас нет", sig_error: "Не удалось загрузить сигналы", sig_ago: "{n} мин назад", sig_now: "только что", sig_sec: "с", sig_until: "До обновления",
+        sig_pairs_label: "Анализ по открытым парам", sig_open_pair: "Открыть эту пару на платформе", sig_goto: "к паре", sig_failed: "Сервер сигналов не поддерживает этот актив", sig_pair_missing: "Пара {pair} сейчас не открыта на платформе — добавьте её вкладкой над графиком.", sig_no_pairs: "Добавьте валютные пары на платформе брокера — сигналы приходят только по открытым парам.", sig_page: "Страница брокера ещё загружается…", sig_open: "Открыть", sig_strength: "Сила", sig_empty: "Сигналов сейчас нет", sig_error: "Не удалось загрузить сигналы", sig_ago: "{n} мин назад", sig_now: "только что", sig_sec: "с", sig_until: "До обновления",
         buy_vip: "Купить VIP", vip_active: "VIP активен",
         nav_back: "Назад", nav_forward: "Вперёд", nav_reload: "Обновить", nav_home: "Главная Quotex",
         nav_menu: "Меню", nav_hard_reload: "Перезагрузить без кэша", nav_zoom: "Масштаб",
@@ -3219,7 +3256,7 @@
         mk_sydney: "Sydney", mk_tokyo: "Tokyo", mk_london: "London", mk_newyork: "New York",
         mk_in: "in {t}", mk_d: "d", mk_h: "h", mk_m: "min",
         mk_note: "You can keep this panel open — signals switch on by themselves when the market opens.",
-        sig_open: "Open", sig_strength: "Strength", sig_empty: "No signals right now", sig_error: "Could not load signals", sig_ago: "{n} min ago", sig_now: "just now", sig_sec: "s", sig_until: "Until refresh",
+        sig_pairs_label: "Analysing open pairs", sig_open_pair: "Open this pair on the platform", sig_goto: "go to pair", sig_failed: "The signal server does not support this asset", sig_pair_missing: "{pair} is not open on the platform right now — add it as a tab above the chart.", sig_no_pairs: "Add currency pairs on the broker platform — signals come only for the open pairs.", sig_page: "The broker page is still loading…", sig_open: "Open", sig_strength: "Strength", sig_empty: "No signals right now", sig_error: "Could not load signals", sig_ago: "{n} min ago", sig_now: "just now", sig_sec: "s", sig_until: "Until refresh",
         buy_vip: "Get VIP", vip_active: "VIP active",
         nav_back: "Back", nav_forward: "Forward", nav_reload: "Reload", nav_home: "Quotex home",
         nav_menu: "Menu", nav_hard_reload: "Hard reload", nav_zoom: "Zoom",
@@ -3328,7 +3365,7 @@
         mk_sydney: "Sydney", mk_tokyo: "Tóquio", mk_london: "Londres", mk_newyork: "Nova York",
         mk_in: "em {t}", mk_d: "d", mk_h: "h", mk_m: "min",
         mk_note: "Pode deixar o painel aberto — os sinais ligam sozinhos quando o mercado abrir.",
-        sig_open: "Abrir", sig_strength: "Força", sig_empty: "Não há sinais agora", sig_error: "Não foi possível carregar os sinais", sig_ago: "há {n} min", sig_now: "agora", sig_sec: "s", sig_until: "Até atualizar",
+        sig_pairs_label: "Analisando os pares abertos", sig_open_pair: "Abrir este par na plataforma", sig_goto: "ao par", sig_failed: "O servidor de sinais não suporta este ativo", sig_pair_missing: "{pair} não está aberto na plataforma agora — adicione-o como aba acima do gráfico.", sig_no_pairs: "Adicione pares de moedas na plataforma — os sinais vêm só para os pares abertos.", sig_page: "A página da corretora ainda está carregando…", sig_open: "Abrir", sig_strength: "Força", sig_empty: "Não há sinais agora", sig_error: "Não foi possível carregar os sinais", sig_ago: "há {n} min", sig_now: "agora", sig_sec: "s", sig_until: "Até atualizar",
         buy_vip: "Comprar VIP", vip_active: "VIP ativo",
         nav_back: "Voltar", nav_forward: "Avançar", nav_reload: "Recarregar", nav_home: "Início Quotex",
         nav_menu: "Menu", nav_hard_reload: "Recarregar sem cache", nav_zoom: "Zoom",
@@ -4363,6 +4400,7 @@
       const strength = Number(item.strength);
       return {
         pair: String(item.pair).toUpperCase(),
+        name: String(item.name || ""),
         price: item.price == null ? "" : item.price,
         dir,
         strength: Number.isFinite(strength) ? Math.max(0, Math.min(100, Math.round(strength))) : 0,
@@ -4421,10 +4459,11 @@
         const up = active.dir === "UP";
         const dirText = active.dir === "DOWN" ? t("sig_down") : active.dir === "UP" ? t("sig_up") : "—";
         const openText = active.dir === "DOWN" ? "Вниз" : active.dir === "UP" ? "Вверх" : "—";
-        activeBox.innerHTML = `<article class="sig-card">
+        activeBox.innerHTML = `<article class="sig-card" data-pair="${sigEsc(active.pair)}" title="${sigEsc(t("sig_open_pair"))}">
           <div class="sig-top">
             ${sigFlags(active.pair)}
-            <div class="sig-name"><b>${sigPair(active.pair)}</b><span class="sig-live"><i></i>LIVE</span></div>
+            <div class="sig-name"><b>${sigEsc(active.name || sigPair(active.pair))}</b><span class="sig-live"><i></i>LIVE</span></div>
+            <span class="sig-goto">${sigEsc(t("sig_goto"))} ↗</span>
             <div class="sig-side"><b class="${up ? "up" : "down"}">${dirText}</b></div>
           </div>
           <div class="sig-price-row"><b>${sigPrice(active.price)}</b><small>${t("sig_strength")} ${active.strength}%</small></div>
@@ -4439,7 +4478,7 @@
       $("sig-list").innerHTML = signalHistoryRows().map((item) => {
         const itemUp = item.dir === "UP";
         const itemDir = item.dir === "DOWN" ? t("sig_down") : item.dir === "UP" ? t("sig_up") : "—";
-        return `<article class="sig-row">
+        return `<article class="sig-row" data-pair="${sigEsc(item.pair)}" title="${sigEsc(t("sig_open_pair"))}">
           ${sigFlags(item.pair)}
           <div class="sig-meta"><b>${sigPair(item.pair)}</b><small>${sigPrice(item.price)} · ${item.tf || sigTf} · <span class="sig-ago" data-at="${item.at}">${sigAgo(item.at)}</span></small></div>
           <div class="sig-side"><b class="${itemUp ? "up" : "down"}">${itemDir}</b><small>${t("sig_strength")} ${item.strength}%</small></div>
@@ -4474,13 +4513,19 @@
       try {
         const result = await window.qbot.signals(SIG_TF[sigTf] || 1);
         const ranked = result && result.ok && Array.isArray(result.ranked) ? result.ranked : [];
+        sigPairs = result && Array.isArray(result.pairs) ? result.pairs : [];
         if (!result || !result.ok) {
-          if (showSkeleton) {
-            $("sig-active").innerHTML = `<p class="sig-note">${t("sig_error")}</p>`;
-            $("sig-list").innerHTML = "";
+          const reason = result && (result.error === "no_pairs" || result.error === "page") ? "sig_" + result.error : "sig_error";
+          if (result && result.error === "no_pairs") sigItems = [];
+          await ensureFlags();
+          renderSigPairs();
+          if (showSkeleton || reason !== "sig_error") {
+            $("sig-active").innerHTML = `<p class="sig-note">${t(reason)}</p>`;
+            if (reason !== "sig_error") $("sig-list").innerHTML = "";
           }
         } else {
           sigItems = ranked.map(mapSignal).filter(Boolean);
+          renderSigPairs();
           rememberSignals(sigItems);
           await ensureFlags();
           renderSignals();
@@ -4498,6 +4543,63 @@
       if (!$("signals-panel").hidden) ensureSigClock();
     }
 
+    let sigPairs = [];
+    let sigHintTimer = null;
+
+    function sigEsc(value) {
+      return String(value == null ? "" : value).replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+    }
+
+    function sigHint(text) {
+      const box = $("sig-hint");
+      clearTimeout(sigHintTimer);
+      box.textContent = text || "";
+      box.hidden = !text;
+      if (text) sigHintTimer = setTimeout(() => { box.hidden = true; }, 3500);
+    }
+
+    // Chips with the pairs that are open on the platform — signals are searched only among them.
+    function renderSigPairs() {
+      const box = $("sig-pairs");
+      if (!sigPairs.length) {
+        box.hidden = true;
+        box.innerHTML = "";
+        return;
+      }
+      const active = sigItems[0] && sigItems[0].pair;
+      box.hidden = false;
+      box.innerHTML = `<span>${sigEsc(t("sig_pairs_label"))} · ${sigPairs.length}</span>` + sigPairs.map((p) => {
+        const cls = ["sig-pair-chip", p.symbol === active ? "on" : "", p.failed ? "off" : ""].filter(Boolean).join(" ");
+        const title = p.failed ? t("sig_failed") : t("sig_open_pair");
+        return `<button type="button" class="${cls}" data-pair="${sigEsc(p.symbol)}" title="${sigEsc(title)}">${sigFlags(p.symbol)}${sigEsc(p.name || sigPair(p.symbol))}</button>`;
+      }).join("");
+    }
+
+    async function openSigPair(symbol, el) {
+      if (!symbol) return;
+      if (el) {
+        el.classList.remove("sig-jump");
+        void el.offsetWidth;
+        el.classList.add("sig-jump");
+      }
+      const res = await window.qbot.openPair(symbol);
+      if (!res || !res.found) sigHint(t("sig_pair_missing").replace("{pair}", sigPair(symbol)));
+      else sigHint("");
+    }
+
+    $("sig-active").addEventListener("click", (event) => {
+      if (event.target.closest(".sig-open")) return;
+      const card = event.target.closest(".sig-card[data-pair]");
+      if (card) openSigPair(card.dataset.pair, card);
+    });
+    $("sig-list").addEventListener("click", (event) => {
+      const row = event.target.closest(".sig-row[data-pair]");
+      if (row) openSigPair(row.dataset.pair, row);
+    });
+    $("sig-pairs").addEventListener("click", (event) => {
+      const chip = event.target.closest(".sig-pair-chip[data-pair]");
+      if (chip) openSigPair(chip.dataset.pair, chip);
+    });
     $("signals").addEventListener("click", () => {
       const panel = $("signals-panel");
       panel.hidden = false;
