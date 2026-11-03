@@ -324,7 +324,7 @@ function createTradingBotModal() {
     true
   );
   const otcTradingGroup = createInputGroup(
-    "(OTC) Trading",
+    "(OTC) Trading · Jev AI signals",
     "checkbox",
     "otc-trading",
     storage["deal-otc"] === "ON", // Устанавливаем checked на основе значения в storage

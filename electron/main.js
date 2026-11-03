@@ -1250,69 +1250,119 @@ app.whenReady().then(() => {
     }
   })()`;
 
+  // Jev берёт 256–1568 px по каждой стороне: низкий график растягиваем, высокий ужимаем.
+  // У очень вытянутого графика длинная сторона упирается в 1568, и пропорции немного меняются.
+  function fitForJev(image) {
+    let { width, height } = image.getSize();
+    if (height > 1568) {
+      image = image.resize({ height: 1568, quality: "best" });
+      ({ width, height } = image.getSize());
+    }
+    if (width < 256 || height < 256) {
+      const k = 256 / Math.min(width, height);
+      image = image.resize({
+        width: Math.min(1568, Math.ceil(width * k)),
+        height: Math.min(1568, Math.ceil(height * k)),
+        quality: "best",
+      });
+    }
+    return image;
+  }
+
+  async function captureChart(contents, forJev) {
+    const rect = await contents.executeJavaScript(CHART_RECT_JS, true).catch(() => null);
+    const zoom = contents.getZoomFactor() || 1;
+    const area = rect
+      ? {
+          x: Math.round(rect.x * zoom),
+          y: Math.round(rect.y * zoom),
+          width: Math.round(rect.w * zoom),
+          height: Math.round(rect.h * zoom),
+        }
+      : undefined;
+    let image = await contents.capturePage(area);
+    if (image.isEmpty()) return { ok: false, error: "capture" };
+    const size = image.getSize();
+    if (size.width > 1280) image = image.resize({ width: 1280, quality: "best" });
+    if (forJev) image = fitForJev(image);
+    const pair = await runInBot(contents, ACTIVE_PAIR_JS).catch(() => "");
+    return {
+      ok: true,
+      chart: !!rect,
+      pair: String(pair || "").slice(0, 30),
+      image: "data:image/jpeg;base64," + image.toJPEG(82).toString("base64"),
+    };
+  }
+
   ipcMain.handle("qbot-ai-capture", async (event) => {
     const contents = siteContentsFrom(event.sender);
     if (!contents || contents.isDestroyed() || !brokerPage(contents)) return { ok: false, error: "no_page" };
     try {
-      const rect = await contents.executeJavaScript(CHART_RECT_JS, true).catch(() => null);
-      const zoom = contents.getZoomFactor() || 1;
-      const area = rect
-        ? {
-            x: Math.round(rect.x * zoom),
-            y: Math.round(rect.y * zoom),
-            width: Math.round(rect.w * zoom),
-            height: Math.round(rect.h * zoom),
-          }
-        : undefined;
-      let image = await contents.capturePage(area);
-      if (image.isEmpty()) return { ok: false, error: "capture" };
-      const size = image.getSize();
-      if (size.width > 1280) image = image.resize({ width: 1280, quality: "best" });
-      const pair = await runInBot(contents, ACTIVE_PAIR_JS).catch(() => "");
-      return {
-        ok: true,
-        chart: !!rect,
-        pair: String(pair || "").slice(0, 30),
-        image: "data:image/jpeg;base64," + image.toJPEG(82).toString("base64"),
-      };
+      return await captureChart(contents, false);
     } catch (error) {
       telemetry.reportError("ai", "Снимок графика не получился: " + (error && error.message ? error.message : error), errorDetails(contents, "capture"));
       return { ok: false, error: "capture" };
     }
   });
 
-  ipcMain.handle("qbot-ai-analyze", async (event, payload) => {
-    const input = payload && typeof payload === "object" ? payload : {};
-    const image = String(input.image || "");
-    if (!image.startsWith("data:image/jpeg;base64,") || image.length > 2400000) return { ok: false, error: "bad_image" };
+  async function postAi(body, timeoutMs) {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 100000);
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
       const response = await net.fetch(AI_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json", "User-Agent": "QbotPlus/" + app.getVersion() },
-        body: JSON.stringify({
-          install: telemetry.installId(),
-          version: app.getVersion(),
-          lang: ["ru", "en", "pt"].includes(input.lang) ? input.lang : "en",
-          pair: String(input.pair || "").slice(0, 30),
-          image,
-        }),
+        body: JSON.stringify({ install: telemetry.installId(), version: app.getVersion(), ...body }),
         signal: controller.signal,
       });
       const data = await response.json().catch(() => null);
-      if (data && typeof data === "object" && (data.ok || data.error)) {
-        if (!data.ok && data.error === "upstream") telemetry.reportError("ai", "AI-сервис не ответил (OpenRouter)", { source: "ai.php" });
-        return data;
-      }
-      return { ok: false, error: "upstream" };
+      return data && typeof data === "object" && (data.ok || data.error) ? data : { ok: false, error: "upstream" };
     } catch (error) {
-      const aborted = error && error.name === "AbortError";
-      telemetry.reportError("ai", aborted ? "AI-анализ: превышено время ожидания" : "AI-анализ: нет связи с сервером", { source: "ai.php" });
-      return { ok: false, error: aborted ? "timeout" : "network" };
+      return { ok: false, error: error && error.name === "AbortError" ? "timeout" : "network" };
     } finally {
       clearTimeout(timer);
     }
+  }
+
+  // ——— Сигналы робота от Jev: робот (страница брокера) просит сигнал, мы снимаем график и спрашиваем ai.php ———
+  ipcMain.handle("qbot-jev-signal", async (event, payload) => {
+    const contents = event.sender;
+    if (!contents || contents.isDestroyed() || !brokerPage(contents)) return { ok: false, error: "no_page" };
+    const input = payload && typeof payload === "object" ? payload : {};
+    let shot;
+    try {
+      shot = await captureChart(contents, true);
+    } catch (error) {
+      telemetry.reportError("ai", "Jev: снимок графика не получился: " + (error && error.message ? error.message : error), errorDetails(contents, "jev"));
+      return { ok: false, error: "capture" };
+    }
+    if (!shot.ok) return shot;
+    if (!shot.chart) return { ok: false, error: "no_chart" };
+    const data = await postAi(
+      { action: "signal", pair: String(input.pair || shot.pair || "").slice(0, 30), demo: input.demo === true, image: shot.image },
+      20000
+    );
+    if (!data.ok && data.error === "upstream") telemetry.reportError("ai", "Jev-сигнал: AI-сервис не ответил", { source: "ai.php" });
+    return data;
+  });
+
+  ipcMain.handle("qbot-jev-outcome", (_event, payload) => {
+    const input = payload && typeof payload === "object" ? payload : {};
+    return postAi({ action: "outcome", id: String(input.id || ""), result: String(input.result || "") }, 10000);
+  });
+
+  ipcMain.handle("qbot-ai-analyze", async (event, payload) => {
+    const input = payload && typeof payload === "object" ? payload : {};
+    const image = String(input.image || "");
+    if (!image.startsWith("data:image/jpeg;base64,") || image.length > 2400000) return { ok: false, error: "bad_image" };
+    const data = await postAi(
+      { lang: ["ru", "en", "pt"].includes(input.lang) ? input.lang : "en", pair: String(input.pair || "").slice(0, 30), image },
+      100000
+    );
+    if (data.error === "upstream") telemetry.reportError("ai", "AI-сервис не ответил (OpenRouter)", { source: "ai.php" });
+    if (data.error === "timeout") telemetry.reportError("ai", "AI-анализ: превышено время ожидания", { source: "ai.php" });
+    if (data.error === "network") telemetry.reportError("ai", "AI-анализ: нет связи с сервером", { source: "ai.php" });
+    return data;
   });
 
   ipcMain.handle("qbot-open-external", (_event, url) => {

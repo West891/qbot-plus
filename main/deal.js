@@ -31,6 +31,54 @@ function getTradingStrategy() {
 
 const QBOT_LAST_DEAL_AMOUNT_KEY = "qbot_last_deal_amount";
 const QBOT_HISTORY_BEFORE_KEY = "qbot_history_before";
+const QBOT_JEV_PENDING_KEY = "qbot_jev_pending";
+
+/** В OTC-режиме сигналы даёт только Jev по снимку графика, иначе — сервер сигналов. */
+function useJevSignals() {
+  return getQbotSettings()["deal-otc"] === "ON";
+}
+
+/** Сигнал Jev через приложение (preload → main.js → ai.php). Вне приложения ответа нет — выходим по таймауту. */
+function requestJevSignal(pair, demo) {
+  const id = "jev-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (signal) => {
+      if (settled) return;
+      settled = true;
+      document.removeEventListener("qbot-jev-signal-result", onResult);
+      resolve(signal && typeof signal === "object" ? signal : { ok: false, error: "timeout" });
+    };
+    const onResult = (event) => {
+      let detail = event.detail;
+      if (typeof detail === "string") {
+        try { detail = JSON.parse(detail); } catch (e) { return; }
+      }
+      if (detail && detail.id === id) finish(detail.signal);
+    };
+    document.addEventListener("qbot-jev-signal-result", onResult);
+    document.dispatchEvent(new CustomEvent("qbot-jev-signal-request", {
+      detail: JSON.stringify({ id, pair, demo })
+    }));
+    setTimeout(() => finish(null), 30000);
+  });
+}
+
+/** Итог первой сделки по сигналу Jev уходит в журнал ai.php; шаги мартингейла не считаются. */
+function reportJevOutcome(kind) {
+  const id = localStorage.getItem(QBOT_JEV_PENDING_KEY);
+  if (!id) return;
+  localStorage.removeItem(QBOT_JEV_PENDING_KEY);
+  document.dispatchEvent(new CustomEvent("qbot-jev-outcome", {
+    detail: JSON.stringify({ id, result: kind })
+  }));
+}
+
+const JEV_ERRORS = {
+  limit: "Jev: дневной лимит сигналов",
+  no_chart: "Jev: график не найден",
+  timeout: "Jev: нет ответа (работает только в приложении)",
+};
 
 /** Сумма инвестиции всегда целое число (не меньше 1). */
 function roundInvestmentAmount(n) {
@@ -768,6 +816,34 @@ async function start() {
 
   // Проверяем демо или реал
   let chekuid = QbotDom.isDemoAccount();
+  localStorage.removeItem(QBOT_JEV_PENDING_KEY);
+
+  if (useJevSignals()) {
+    const logElement = document.querySelector(".log");
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    if (robotStopped()) return;
+    const jev = await requestJevSignal(pairText, chekuid);
+    console.log("[Q-bot] Сигнал Jev:", symbol, jev);
+    if (!jev.ok) {
+      if (logElement) logElement.textContent = JEV_ERRORS[jev.error] || "Jev: ошибка " + (jev.error || "");
+      scheduleStart(jev.error === "limit" ? 10 * 60000 : 3000);
+      return;
+    }
+    const pct = (p) => Math.round(Number(p) * 100);
+    if (logElement) logElement.textContent = `${symbol} - ${jev.direction} · ↑${pct(jev.up)}% ↓${pct(jev.down)}%`;
+    if (jev.direction !== "UP" && jev.direction !== "DOWN") {
+      scheduleStart(1500);
+      return;
+    }
+    if (hasOpenTradesPreventingNewDeal()) {
+      console.warn("[Q-bot] Перед открытием появились открытые сделки — откладываем.");
+      scheduleStart(1500);
+      return;
+    }
+    openDeal(jev.direction, baseInv, symbol, 0, () => localStorage.setItem(QBOT_JEV_PENDING_KEY, jev.id));
+    return;
+  }
+
   let Urls;
   if (chekuid) {
     Urls = "https://ai-tradebot.com/newsignal/signal.php?para=";
@@ -1009,6 +1085,7 @@ function activeDeal(direction, symbol) {
         return;
       }
       const settled = settleDeal(history, stake, balanceDelta);
+      reportJevOutcome(settled.kind);
       const lost = settled.kind === "loss";
       const strategy = getTradingStrategy();
       const total = Math.round(((Number(localStorage.getItem("qbot_session_profit")) || 0) + settled.delta) * 100) / 100;
@@ -1098,7 +1175,11 @@ async function runMartin(direction, symbol, coef) {
   );
 
   let way = direction;
-  if (coef === 2.5) {
+  if (coef === 2.5 && useJevSignals()) {
+    const jev = await requestJevSignal("", QbotDom.isDemoAccount()); // пару main.js возьмёт с активной вкладки
+    console.log("[Q-bot] Сигнал Jev для мартин-АИ:", symbol, jev);
+    if (jev.ok && (jev.direction === "UP" || jev.direction === "DOWN")) way = jev.direction;
+  } else if (coef === 2.5) {
     const demo = QbotDom.isDemoAccount();
     const url = demo
       ? "https://ai-tradebot.com/newsignal/signal.php?para="

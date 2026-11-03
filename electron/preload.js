@@ -64,6 +64,36 @@ document.addEventListener("qbot-trusted-click", (event) => {
   ipcRenderer.invoke("qbot-trusted-click", { x, y }).catch(() => {});
 });
 
+// Robot signals from Jev: deal.js asks with {id, pair, demo}, main.js captures the chart and calls ai.php.
+document.addEventListener("qbot-jev-signal-request", async (event) => {
+  let detail = {};
+  try {
+    detail = typeof event.detail === "string" ? JSON.parse(event.detail) : event.detail || {};
+  } catch (e) {
+    return;
+  }
+  if (!detail.id) return;
+  let signal;
+  try {
+    signal = await ipcRenderer.invoke("qbot-jev-signal", { pair: detail.pair, demo: detail.demo === true });
+  } catch (e) {
+    signal = { ok: false, error: "ipc" };
+  }
+  document.dispatchEvent(
+    new CustomEvent("qbot-jev-signal-result", { detail: JSON.stringify({ id: detail.id, signal }) })
+  );
+});
+
+document.addEventListener("qbot-jev-outcome", (event) => {
+  let detail = {};
+  try {
+    detail = typeof event.detail === "string" ? JSON.parse(event.detail) : event.detail || {};
+  } catch (e) {
+    return;
+  }
+  ipcRenderer.invoke("qbot-jev-outcome", { id: detail.id, result: detail.result }).catch(() => {});
+});
+
 document.addEventListener("qbot-capture-request", async (event) => {
   const id = event.detail && event.detail.id;
   if (!id) return;
