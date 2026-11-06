@@ -518,9 +518,12 @@ function initialUrl() {
   return saved ? saved.lastUrl : START_URL;
 }
 
+const DEFAULT_ZOOM = 0.8;
+
 function siteWebPreferences() {
   return {
     partition: BROKER_PARTITION,
+    zoomFactor: DEFAULT_ZOOM,
     preload: path.join(__dirname, "preload.js"),
     contextIsolation: true,
     nodeIntegration: false,
@@ -581,7 +584,7 @@ function browserAction(win, action) {
   else if (action === "home") contents.loadURL(START_URL);
   else if (action === "zoomIn") zoomBy(0.1);
   else if (action === "zoomOut") zoomBy(-0.1);
-  else if (action === "zoomReset") contents.setZoomFactor(1);
+  else if (action === "zoomReset") contents.setZoomFactor(DEFAULT_ZOOM);
   else if (action === "devtools") contents.toggleDevTools();
   else if (action === "fullscreen") win.setFullScreen(!win.isFullScreen());
   else if (action === "quit") app.quit();
