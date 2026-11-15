@@ -261,6 +261,27 @@ function isTradeUrl(rawUrl) {
   }
 }
 
+// Only the challenge page itself carries _cf_chl_opt; the /cdn-cgi/challenge-platform/ script
+// also sits on ordinary pages (Cloudflare's bot detection), so it does not mark a challenge.
+const CHALLENGE_CHECK = `(() => {
+  if (document.querySelector("#challenge-form, #challenge-stage, #cf-challenge-running")) return true;
+  return Array.from(document.scripts).some((s) => !s.src && s.textContent.includes("_cf_chl_opt"));
+})()`;
+
+// Cloudflare puts one-time __cf_chl_* tokens in the address while it checks the visitor;
+// opening such an address again after a restart only starts a new check.
+function withoutChallengeToken(rawUrl) {
+  try {
+    const url = new URL(rawUrl);
+    const tokens = [...url.searchParams.keys()].filter((key) => key.startsWith("__cf_chl_"));
+    if (!tokens.length) return rawUrl;
+    tokens.forEach((key) => url.searchParams.delete(key));
+    return url.toString();
+  } catch (e) {
+    return rawUrl;
+  }
+}
+
 // Каждый файл запускается отдельным классическим скриптом в одном мире:
 // top-level let/const (storage, Utils, QbotDom...) общие, как у content scripts Chrome.
 // Injections run one after another: two overlapping runs (an error page, then the fallback
@@ -281,6 +302,17 @@ async function injectNow(contents) {
       false
     );
     if (already) return;
+    // Cloudflare's check counts every change to its page against the visitor, so the robot
+    // waits: once the check passes, Cloudflare loads the real page and the robot goes in then.
+    const challenge = await contents.executeJavaScriptInIsolatedWorld(
+      WORLD_ID,
+      [{ code: CHALLENGE_CHECK }],
+      false
+    );
+    if (challenge) {
+      contents.emit("qbot-injected");
+      return;
+    }
     contents.__qbotInjectedUrl = url;
     contents.emit("qbot-injecting");
     for (const script of getInjectionScripts()) {
@@ -480,7 +512,9 @@ function isDeadHost(rawUrl) {
 function readSessionState() {
   try {
     const data = JSON.parse(fs.readFileSync(sessionStatePath(), "utf8"));
-    if (data && canInjectUrl(data.lastUrl) && !isDeadHost(data.lastUrl)) return data;
+    if (data && canInjectUrl(data.lastUrl) && !isDeadHost(data.lastUrl)) {
+      return { ...data, lastUrl: withoutChallengeToken(data.lastUrl) };
+    }
   } catch (e) {
     return null;
   }
@@ -493,7 +527,7 @@ function writeSessionState(url) {
     fs.mkdirSync(path.dirname(sessionStatePath()), { recursive: true });
     fs.writeFileSync(
       sessionStatePath(),
-      JSON.stringify({ lastUrl: url, savedAt: Date.now() })
+      JSON.stringify({ lastUrl: withoutChallengeToken(url), savedAt: Date.now() })
     );
   } catch (error) {
     console.error("[Q-bot] Не удалось сохранить сессию:", error);
